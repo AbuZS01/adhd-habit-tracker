@@ -1,0 +1,25 @@
+name: Dispatch habit nudges
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call cron dispatch endpoint
+        run: |
+          status=$(curl -s -o /tmp/response.txt -w "%{http_code}" \
+            -X POST "${APP_URL}/api/cron/dispatch" \
+            -H "Authorization: Bearer ${CRON_SECRET}")
+          echo "HTTP status: $status"
+          cat /tmp/response.txt
+          if [ "$status" -ge 300 ]; then
+            echo "Dispatch failed"
+            exit 1
+          fi
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
