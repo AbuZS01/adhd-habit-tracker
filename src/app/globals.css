@@ -298,6 +298,36 @@ textarea {
   font-size: 0.85rem;
 }
 
+.report-logged-at {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.report-legal-context {
+  background: var(--bg-elevated);
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.report-legal-context ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.report-legal-context li {
+  margin-bottom: 0.5rem;
+}
+
+.report-footer {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid #334155;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
 .report-link {
   font-size: 0.85rem;
   word-break: break-all;
@@ -335,6 +365,15 @@ textarea {
 
   .entry-item {
     border-left-color: #000;
+  }
+
+  .report-legal-context {
+    background: transparent;
+    border: 1px solid #000;
+  }
+
+  .report-footer {
+    border-top-color: #000;
   }
 
   .report-attachment-img {

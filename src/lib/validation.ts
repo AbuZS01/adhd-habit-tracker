@@ -169,8 +169,11 @@ export const createAttachmentSchema = z.object({
 
 export const familyNameSchema = trimmedText(120);
 
+export const nationSchema = z.enum(['england', 'wales', 'scotland', 'northern_ireland']);
+
 export const updateFamilySchema = z.object({
-  name: familyNameSchema,
+  name: familyNameSchema.optional(),
+  nation: nationSchema.nullable().optional(),
 });
 
 export const inviteAcceptSchema = z.object({

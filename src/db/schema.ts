@@ -70,6 +70,11 @@ export const verificationTokens = pgTable('verification_token', {
 export const families = pgTable('families', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
+  // Which UK nation's home-education rules apply. Drives which legal-standard
+  // text is shown on the dashboard and evidence report (src/lib/legal-content.ts)
+  // — the four nations' regimes diverge materially, so this can't be
+  // guessed or defaulted. Null until the family sets it.
+  nation: text('nation').$type<'england' | 'wales' | 'scotland' | 'northern_ireland'>(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

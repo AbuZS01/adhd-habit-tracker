@@ -3,7 +3,8 @@ import { eq, and } from 'drizzle-orm';
 import { auth, signIn } from '@/lib/auth';
 import { requireSessionFamily } from '@/lib/family';
 import { getDb } from '@/db/client';
-import { children as childrenTable } from '@/db/schema';
+import { children as childrenTable, families as familiesTable } from '@/db/schema';
+import { getNationContent } from '@/lib/legal-content';
 import AddChildForm from '@/components/AddChildForm';
 
 export default async function DashboardPage() {
@@ -71,9 +72,25 @@ export default async function DashboardPage() {
     .where(and(eq(childrenTable.familyId, familySession.familyId), eq(childrenTable.isArchived, false)))
     .orderBy(childrenTable.createdAt);
 
+  const [family] = await db
+    .select({ nation: familiesTable.nation })
+    .from(familiesTable)
+    .where(eq(familiesTable.id, familySession.familyId));
+
   return (
     <main className="container">
       <h1>Children</h1>
+
+      {family?.nation ? (
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+          {getNationContent(family.nation).legalStandard} Full details on each child&apos;s evidence report.
+        </p>
+      ) : (
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+          <Link href="/family">Set your nation</Link> to see the right home-education legal information for
+          where you live — England, Wales, Scotland and Northern Ireland all differ.
+        </p>
+      )}
 
       {rows.length === 0 && (
         <p style={{ color: 'var(--text-muted)' }}>

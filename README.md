@@ -2,8 +2,11 @@
 
 A web app for UK home-educating families to keep a per-child, per-subject,
 dated record of learning activities and evidence — useful for your own
-records, and as evidence if your Local Authority asks about your child's
-education under the Children Not in School registration and support duties.
+records, and as a clear, dated response if a council makes an informal
+enquiry about your child's education. **Not legal advice** — see "Legal
+information" below and `PLAN.md` section 1 for important caveats (the law
+differs across England/Wales/Scotland/Northern Ireland, and is currently
+changing in England and Wales).
 
 See `PLAN.md` for the full design rationale and data model.
 
@@ -11,6 +14,10 @@ See `PLAN.md` for the full design rationale and data model.
 
 - Each **family** account can have multiple **guardians** (co-parents,
   carers) sharing access — invite a co-guardian from the Family page.
+- Set your **nation** (England/Wales/Scotland/Northern Ireland) on the
+  Family page to see the right legal-standard text on your dashboard and
+  evidence reports — the four nations' home-education rules diverge
+  materially, so this is never assumed or defaulted.
 - Each **child** gets their own profile (name, year group). No date of
   birth is collected — see "Security notes" below.
 - Each child has **subjects** (seeded with English/Maths/Science/Wider
@@ -59,6 +66,20 @@ to work.
 4. Set the remaining env vars listed above in Vercel Project Settings (Production + Preview), plus `AUTH_URL` set to your deployed URL.
 5. Run `npm run db:migrate` against the production database (one-off, from a machine with `DATABASE_URL` set to the prod value).
 6. Deploy.
+
+## Legal information
+
+`src/lib/legal-content.ts` holds a short, nation-specific summary of the
+current legal standard and duties for England, Wales, Scotland, and
+Northern Ireland, shown on the dashboard and evidence report once a
+family sets its nation. It is deliberately hedged and dated
+(`LEGAL_CONTENT_LAST_REVIEWED`) rather than presented as a compliance
+guarantee: England and Wales have legislated for a "Children Not in
+School" register (Children's Wellbeing and Schools Act 2026) that is
+**not yet in force**, and Scotland/Northern Ireland run entirely separate
+regimes unaffected by that Act. Review and update this file's content
+(and its last-reviewed date) if the law changes — do not let it go stale
+silently.
 
 ## Security notes
 

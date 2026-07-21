@@ -4,19 +4,65 @@
 
 A web app for UK families who home-educate their children, built to make it
 easy to (a) keep a running, dated record of each child's learning across
-subjects, and (b) produce that record as evidence if a Local Authority
-exercises its registration/support duties toward home-educating families.
-Each child gets their own profile; each child's subjects are separate
-sections; every note, activity, or upload-in-spirit (this build stores
-evidence as dated text entries with an optional link, not file uploads —
-see section 3) carries a date so a chronological record can be reconstructed
-at any time.
+subjects, and (b) produce that record as a clear, dated response if a
+council makes an informal enquiry about a child's education. Each child
+gets their own profile; each child's subjects are separate sections;
+every note, activity, or upload-in-spirit (this build stores evidence as
+dated text entries with an optional link, not file uploads — see section
+3) carries a date so a chronological record can be reconstructed at any
+time.
 
 **Not legal advice.** This app is a record-keeping tool. It does not
 determine what counts as a "suitable" education, does not submit anything
-to a Local Authority automatically, and is not a substitute for reading the
-actual guidance that applies to your family. It just makes it easy to keep
-the kind of dated, organised record that such conversations tend to need.
+to a council automatically, and is not a substitute for reading the
+actual guidance that applies to your family and nation. It just makes it
+easy to keep the kind of dated, organised record that such conversations
+tend to need. See "Four-nations legal landscape" below for why this
+matters more than it might first appear.
+
+**Four-nations legal landscape (added after user-supplied research — treat
+as very important context, not a footnote):** home-education law is not
+uniform across the UK, and an earlier draft of this app's copy overclaimed
+by implying a "Children Not in School" registration duty was already in
+force. Correcting that:
+- There is **no registration duty in force anywhere in the UK today**.
+  England and Wales have *legislated* for one — the Children's Wellbeing
+  and Schools Act 2026 (Royal Assent 29 April 2026) inserts a "Children
+  Not in School" register duty into the Education Act 1996 — but
+  commencement depends on regulations not yet made, realistically no
+  earlier than 2027 (DfE signals have drifted toward 2028). Scotland and
+  Northern Ireland are entirely unaffected by that Act and run their own
+  separate regimes.
+- **No UK nation gives a council the right to enter a home or compel
+  seeing a child.** England's incoming power is only to *request* a
+  visit; refusal is "a relevant factor," not a breach. Overstating this
+  would misinform the exact audience this app serves.
+- The one thing that *is* true everywhere, today, is the underlying duty
+  to provide a suitable education (Education Act 1996 s.7 in
+  England/Wales/NI in substance; Education (Scotland) Act 1980 s.30 in
+  Scotland) — and that **a dated, child-specific education report is the
+  standard, sufficient response** to a council's informal enquiry or a
+  formal "satisfy" notice; work samples are explicitly not required.
+  This is exactly what this app's evidence report already produces —
+  the research validated the core feature rather than requiring a
+  pivot.
+- **Design response:** a `families.nation` field (England/Wales/Scotland/
+  Northern Ireland) drives nation-specific legal-standard text
+  (`src/lib/legal-content.ts`) shown on the dashboard and evidence
+  report, instead of one generic (and previously England-biased,
+  overclaiming) blurb. Content is deliberately hedged, dated
+  (`LEGAL_CONTENT_LAST_REVIEWED`), and framed as "helps you prepare
+  evidence," never "ensures compliance" — per the research's explicit
+  warning that a compliance guarantee is false comfort and a liability
+  given the regulations are still being written.
+- **Explicitly deferred** (research Tier 2/3 items, not built this
+  pass — see section 7): SEN/EHC/IDP/statement flags on a child profile;
+  optional curriculum-framework tagging; a "required vs requested"
+  matrix per nation; deadline reminders (e.g. Scotland's 6-week consent
+  guidance, England's 15-day register-response window once commenced);
+  monetisation/pricing tiers. These are genuine product decisions, not
+  omissions — flagged for the user to prioritise rather than built
+  speculatively.
 
 **File uploads (revised from the initial scope decision):** the first pass
 of this app stored evidence as dated metadata plus an optional external
@@ -141,7 +187,9 @@ domain model replaced entirely)**
 ```
 users               — one row per guardian (Auth.js-managed identity only)
 accounts/sessions/verification_token — Auth.js adapter tables
-families            — the tenancy boundary; everything else hangs off family_id
+families            — the tenancy boundary; everything else hangs off family_id.
+                        nation? (england|wales|scotland|northern_ireland) drives
+                        which nation's legal-standard text is shown (see section 1)
 family_members      — (family_id, user_id, role: owner|guardian) — multi-guardian
 family_invites      — single-use, expiring (7d) codes an owner generates
 children            — (family_id, name, year_group?, notes?, is_archived)
@@ -217,6 +265,16 @@ check that would slow down the actual point of the app.
    — the same class of bug as the earlier CSP nonce fix, caught this time
    before shipping by checking the SDK's actual upload target rather than
    assuming.
+10. Four-nations legal research applied: `families.nation` field +
+    migration; `src/lib/legal-content.ts` (hedged, dated, per-nation legal
+    standard + current-duties content); nation selector on the Family
+    page; nation-aware legal text wired into the dashboard and evidence
+    report (replacing a generic blurb that had drifted into overclaiming
+    a current "Children Not in School" registration duty); "logged
+    {timestamp}" shown per report entry alongside the guardian-chosen
+    date, to visibly separate when an activity happened from when it was
+    recorded (the contemporaneous-record framing the research identifies
+    as the actually persuasive artefact).
 
 ## 7. Known limitations / possible next steps
 
@@ -244,3 +302,19 @@ check that would slow down the actual point of the app.
   accidental data loss of evidence, but a genuine hard-delete path
   (distinct from archive, with its own explicit confirmation) would be
   needed for full erasure-request support and is a natural next step.
+- From the four-nations research (section 1), deliberately not built this
+  pass: SEN/EHC/IDP/statement flags on a child profile; optional
+  curriculum-framework tagging (offered, never mandatory, per the
+  research's explicit warning against "school-at-home" framing);
+  reading/outing logs as distinct tracked entities beyond the existing
+  `activity_type` field; a per-nation "required vs requested" matrix;
+  deadline reminders (Scotland's ~6-week consent-decision guidance,
+  England's 15-day register-response window once commenced — the latter
+  can't be built accurately until commencement regulations exist); and
+  any monetisation/pricing tiers. None of these are hard technical
+  problems — they're scope/priority decisions for the user to make.
+- `LEGAL_CONTENT_LAST_REVIEWED` in `src/lib/legal-content.ts` is a manual
+  date, not a live feed — there's no mechanism yet to flag that content
+  as stale as England/Wales commencement regulations are made. A
+  reasonable follow-up is a periodic reminder (or a routine) to review
+  and bump that date.

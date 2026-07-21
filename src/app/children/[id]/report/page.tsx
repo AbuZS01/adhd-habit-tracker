@@ -2,17 +2,30 @@ import { notFound, redirect } from 'next/navigation';
 import { eq, and, gte, lte, inArray } from 'drizzle-orm';
 import { requireSessionFamily } from '@/lib/family';
 import { getDb } from '@/db/client';
-import { children as childrenTable, subjects as subjectsTable, logEntries, attachments as attachmentsTable } from '@/db/schema';
+import { children as childrenTable, subjects as subjectsTable, logEntries, attachments as attachmentsTable, families as familiesTable } from '@/db/schema';
+import { getNationContent, LEGAL_CONTENT_FOOTER } from '@/lib/legal-content';
 import PrintButton from '@/components/PrintButton';
 
 type EntryRow = typeof logEntries.$inferSelect;
 type AttachmentRow = typeof attachmentsTable.$inferSelect;
+
+function formatLoggedAt(date: Date): string {
+  return date.toLocaleString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'UTC',
+  });
+}
 
 function EntryReportItem({ entry, entryAttachments }: { entry: EntryRow; entryAttachments: AttachmentRow[] }) {
   return (
     <li>
       <strong>{formatDate(entry.entryDate)}</strong> — {entry.title}
       <span className="report-type"> ({ACTIVITY_LABELS[entry.activityType] ?? entry.activityType})</span>
+      <span className="report-logged-at"> — logged {formatLoggedAt(entry.createdAt)}</span>
       {entry.description && <p>{entry.description}</p>}
       {entry.externalLink && <p className="report-link">{entry.externalLink}</p>}
       {entryAttachments.length > 0 && (
@@ -72,6 +85,11 @@ export default async function EvidenceReportPage({
     .where(and(eq(childrenTable.id, childId), eq(childrenTable.familyId, session.familyId)));
 
   if (!child) notFound();
+
+  const [family] = await db
+    .select({ nation: familiesTable.nation })
+    .from(familiesTable)
+    .where(eq(familiesTable.id, session.familyId));
 
   const subjects = await db
     .select()
@@ -144,6 +162,19 @@ export default async function EvidenceReportPage({
         </p>
       </header>
 
+      {family?.nation && (
+        <section className="report-legal-context">
+          <p>
+            <strong>{getNationContent(family.nation).legalStandard}</strong>
+          </p>
+          <ul>
+            {getNationContent(family.nation).currentDuties.map((duty, i) => (
+              <li key={i}>{duty}</li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {entries.length === 0 && <p>No log entries in this period.</p>}
 
       {subjects.map((subject) => {
@@ -171,6 +202,10 @@ export default async function EvidenceReportPage({
           </ul>
         </section>
       )}
+
+      <footer className="report-footer">
+        <p>{LEGAL_CONTENT_FOOTER}</p>
+      </footer>
     </main>
   );
 }

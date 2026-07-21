@@ -25,7 +25,12 @@ export default async function FamilyPage() {
   return (
     <main className="container">
       <h1>Family</h1>
-      <FamilyManager familyName={family?.name ?? ''} isOwner={session.role === 'owner'} members={members} />
+      <FamilyManager
+        familyName={family?.name ?? ''}
+        nation={family?.nation ?? null}
+        isOwner={session.role === 'owner'}
+        members={members}
+      />
     </main>
   );
 }

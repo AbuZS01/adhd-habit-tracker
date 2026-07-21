@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { NATION_LABELS, type Nation } from '@/lib/legal-content';
 
 export interface FamilyMemberData {
   userId: string;
@@ -10,12 +11,16 @@ export interface FamilyMemberData {
   email: string;
 }
 
+const NATION_OPTIONS = Object.entries(NATION_LABELS) as [Nation, string][];
+
 export default function FamilyManager({
   familyName,
+  nation,
   isOwner,
   members,
 }: {
   familyName: string;
+  nation: Nation | null;
   isOwner: boolean;
   members: FamilyMemberData[];
 }) {
@@ -23,6 +28,8 @@ export default function FamilyManager({
   const [isPending, startTransition] = useTransition();
   const [name, setName] = useState(familyName);
   const [renameMessage, setRenameMessage] = useState<string | null>(null);
+  const [selectedNation, setSelectedNation] = useState<string>(nation ?? '');
+  const [nationMessage, setNationMessage] = useState<string | null>(null);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [inviteError, setInviteError] = useState<string | null>(null);
 
@@ -40,6 +47,24 @@ export default function FamilyManager({
         router.refresh();
       } else {
         setRenameMessage('Could not save.');
+      }
+    });
+  }
+
+  function saveNation(e: React.FormEvent) {
+    e.preventDefault();
+    setNationMessage(null);
+    startTransition(async () => {
+      const res = await fetch('/api/family', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nation: selectedNation || null }),
+      });
+      if (res.ok) {
+        setNationMessage('Saved.');
+        router.refresh();
+      } else {
+        setNationMessage('Could not save.');
       }
     });
   }
@@ -81,6 +106,32 @@ export default function FamilyManager({
           <p>{familyName}</p>
         )}
         {renameMessage && <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{renameMessage}</p>}
+      </section>
+
+      <section className="card">
+        <h2 style={{ marginTop: 0, fontSize: '1.05rem' }}>Nation</h2>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+          Home education law differs across the UK — setting this shows the right legal information on your
+          dashboard and evidence reports.
+        </p>
+        {isOwner ? (
+          <form className="form-row" onSubmit={saveNation}>
+            <select value={selectedNation} onChange={(e) => setSelectedNation(e.target.value)}>
+              <option value="">Not set</option>
+              {NATION_OPTIONS.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <button className="secondary-btn" type="submit" disabled={isPending}>
+              Save
+            </button>
+          </form>
+        ) : (
+          <p>{nation ? NATION_LABELS[nation] : 'Not set'}</p>
+        )}
+        {nationMessage && <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{nationMessage}</p>}
       </section>
 
       <section className="card">
