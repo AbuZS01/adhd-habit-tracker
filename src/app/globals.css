@@ -212,6 +212,48 @@ textarea {
   color: var(--text-muted);
 }
 
+.attachment-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.4rem 0;
+}
+
+.attachment-thumb-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.attachment-thumb {
+  width: 84px;
+  height: 84px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #334155;
+}
+
+.attachment-file-link {
+  display: inline-block;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-remove {
+  font-size: 0.75rem;
+}
+
+.attachment-uploader {
+  margin: 0.4rem 0;
+}
+
 .subject-list {
   list-style: none;
   margin: 0;
@@ -261,6 +303,21 @@ textarea {
   word-break: break-all;
 }
 
+.report-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.report-attachment-img {
+  max-width: 220px;
+  max-height: 220px;
+  object-fit: contain;
+  border: 1px solid #334155;
+  border-radius: 4px;
+}
+
 @media print {
   .no-print {
     display: none !important;
@@ -278,6 +335,11 @@ textarea {
 
   .entry-item {
     border-left-color: #000;
+  }
+
+  .report-attachment-img {
+    border-color: #000;
+    break-inside: avoid;
   }
 
   a {

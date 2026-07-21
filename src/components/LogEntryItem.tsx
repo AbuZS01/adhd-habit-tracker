@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import AttachmentUploader from './AttachmentUploader';
 
 export interface LogEntryData {
   id: string;
@@ -10,6 +11,12 @@ export interface LogEntryData {
   description: string | null;
   activityType: string;
   externalLink: string | null;
+}
+
+export interface AttachmentData {
+  id: string;
+  originalName: string;
+  contentType: string;
 }
 
 const ACTIVITY_LABELS: Record<string, string> = {
@@ -30,7 +37,43 @@ function formatDate(iso: string): string {
   });
 }
 
-export default function LogEntryItem({ entry }: { entry: LogEntryData }) {
+function AttachmentThumb({ attachment }: { attachment: AttachmentData }) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const fileUrl = `/api/attachments/${attachment.id}/file`;
+
+  function handleDelete() {
+    startTransition(async () => {
+      const res = await fetch(`/api/attachments/${attachment.id}`, { method: 'DELETE' });
+      if (res.ok) router.refresh();
+    });
+  }
+
+  return (
+    <div className="attachment-thumb-wrap">
+      <a href={fileUrl} target="_blank" rel="noopener noreferrer">
+        {attachment.contentType.startsWith('image/') ? (
+          <img src={fileUrl} alt={attachment.originalName} className="attachment-thumb" loading="lazy" />
+        ) : (
+          <span className="attachment-file-link">📄 {attachment.originalName}</span>
+        )}
+      </a>
+      <button className="link-btn no-print attachment-remove" onClick={handleDelete} disabled={isPending}>
+        Remove
+      </button>
+    </div>
+  );
+}
+
+export default function LogEntryItem({
+  entry,
+  attachments,
+  uploadsEnabled,
+}: {
+  entry: LogEntryData;
+  attachments: AttachmentData[];
+  uploadsEnabled: boolean;
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [confirming, setConfirming] = useState(false);
@@ -58,6 +101,14 @@ export default function LogEntryItem({ entry }: { entry: LogEntryData }) {
           View evidence ↗
         </a>
       )}
+      {attachments.length > 0 && (
+        <div className="attachment-grid">
+          {attachments.map((a) => (
+            <AttachmentThumb key={a.id} attachment={a} />
+          ))}
+        </div>
+      )}
+      {uploadsEnabled && <AttachmentUploader logEntryId={entry.id} />}
       <div className="no-print">
         {confirming ? (
           <span className="entry-actions">

@@ -20,6 +20,11 @@ const serverEnvSchema = z.object({
   // Optional secondary provider.
   AUTH_GITHUB_ID: z.string().min(1).optional(),
   AUTH_GITHUB_SECRET: z.string().min(1).optional(),
+  // Optional: enables photo/PDF evidence uploads. The @vercel/blob SDK
+  // reads this from process.env directly wherever it's called; it's
+  // listed here too so this schema documents the full set of optional
+  // configuration, matching EMAIL_SERVER/AUTH_GITHUB_ID above.
+  BLOB_READ_WRITE_TOKEN: z.string().min(1).optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

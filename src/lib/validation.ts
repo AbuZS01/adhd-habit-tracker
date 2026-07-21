@@ -143,6 +143,30 @@ export const listEntriesQuerySchema = z.object({
   to: isoDateSchema({ allowFuture: true }).optional(),
 });
 
+// Kept in sync with the constraints passed to `onBeforeGenerateToken` in
+// src/app/api/attachments/upload/route.ts (that's the actual enforcement
+// point at upload time) — this copy validates the confirm-attachment
+// request body after the client-side upload has already completed.
+export const ATTACHMENT_ALLOWED_CONTENT_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+  'application/pdf',
+] as const;
+
+export const ATTACHMENT_MAX_BYTES = 15 * 1024 * 1024; // 15MB — generous for a phone photo, caps abuse.
+export const ATTACHMENT_MAX_PER_ENTRY = 6;
+
+export const createAttachmentSchema = z.object({
+  logEntryId: z.string().uuid(),
+  pathname: z.string().min(1).max(1024),
+  originalName: trimmedText(255),
+  contentType: z.enum(ATTACHMENT_ALLOWED_CONTENT_TYPES),
+  size: z.number().int().positive().max(ATTACHMENT_MAX_BYTES),
+});
+
 export const familyNameSchema = trimmedText(120);
 
 export const updateFamilySchema = z.object({

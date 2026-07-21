@@ -182,6 +182,27 @@ export const logEntries = pgTable('log_entries', {
   dateIdx: index('log_entries_date_idx').on(table.entryDate),
 }));
 
+/**
+ * attachments — uploaded evidence files (photos, PDFs) for a log entry.
+ * Stores the Vercel Blob `pathname`, not a public URL: blobs are written
+ * with `access: 'private'`, so reading one back requires the read-write
+ * token, which only ever happens server-side in the authenticated proxy
+ * route (`/api/attachments/[id]/file`) after an ownership check — the
+ * file is never reachable via a bare link, unlike a public blob URL.
+ */
+export const attachments = pgTable('attachments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  logEntryId: uuid('log_entry_id').notNull().references(() => logEntries.id, { onDelete: 'cascade' }),
+  pathname: text('pathname').notNull(),
+  originalName: text('original_name').notNull(),
+  contentType: text('content_type').notNull(),
+  size: integer('size').notNull(),
+  uploadedByUserId: uuid('uploaded_by_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  logEntryIdx: index('attachments_log_entry_idx').on(table.logEntryId),
+}));
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Family = typeof families.$inferSelect;
@@ -196,3 +217,5 @@ export type Subject = typeof subjects.$inferSelect;
 export type NewSubject = typeof subjects.$inferInsert;
 export type LogEntry = typeof logEntries.$inferSelect;
 export type NewLogEntry = typeof logEntries.$inferInsert;
+export type Attachment = typeof attachments.$inferSelect;
+export type NewAttachment = typeof attachments.$inferInsert;

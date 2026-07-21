@@ -1,9 +1,9 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { requireSessionFamily } from '@/lib/family';
 import { getDb } from '@/db/client';
-import { children as childrenTable, subjects as subjectsTable, logEntries } from '@/db/schema';
+import { children as childrenTable, subjects as subjectsTable, logEntries, attachments as attachmentsTable } from '@/db/schema';
 import LogEntryForm from '@/components/LogEntryForm';
 import LogEntryItem from '@/components/LogEntryItem';
 import ManageSubjects from '@/components/ManageSubjects';
@@ -33,6 +33,23 @@ export default async function ChildPage({ params }: { params: Promise<{ id: stri
     .from(logEntries)
     .where(eq(logEntries.childId, childId))
     .orderBy(logEntries.entryDate);
+
+  const entryIds = entries.map((e) => e.id);
+  const allAttachments = entryIds.length
+    ? await db
+        .select()
+        .from(attachmentsTable)
+        .where(inArray(attachmentsTable.logEntryId, entryIds))
+        .orderBy(attachmentsTable.createdAt)
+    : [];
+  const attachmentsByEntry = new Map<string, typeof allAttachments>();
+  for (const attachment of allAttachments) {
+    const list = attachmentsByEntry.get(attachment.logEntryId) ?? [];
+    list.push(attachment);
+    attachmentsByEntry.set(attachment.logEntryId, list);
+  }
+
+  const uploadsEnabled = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 
   const entriesBySubject = new Map<string, typeof entries>();
   const generalEntries: typeof entries = [];
@@ -86,7 +103,12 @@ export default async function ChildPage({ params }: { params: Promise<{ id: stri
             ) : (
               <ul className="entry-list">
                 {subjectEntries.map((entry) => (
-                  <LogEntryItem key={entry.id} entry={entry} />
+                  <LogEntryItem
+                    key={entry.id}
+                    entry={entry}
+                    attachments={attachmentsByEntry.get(entry.id) ?? []}
+                    uploadsEnabled={uploadsEnabled}
+                  />
                 ))}
               </ul>
             )}
@@ -99,7 +121,12 @@ export default async function ChildPage({ params }: { params: Promise<{ id: stri
           <h2 style={{ marginTop: 0, fontSize: '1.05rem' }}>General</h2>
           <ul className="entry-list">
             {generalEntries.map((entry) => (
-              <LogEntryItem key={entry.id} entry={entry} />
+              <LogEntryItem
+                key={entry.id}
+                entry={entry}
+                attachments={attachmentsByEntry.get(entry.id) ?? []}
+                uploadsEnabled={uploadsEnabled}
+              />
             ))}
           </ul>
         </section>

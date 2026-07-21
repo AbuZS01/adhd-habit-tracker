@@ -1,9 +1,35 @@
 import { notFound, redirect } from 'next/navigation';
-import { eq, and, gte, lte } from 'drizzle-orm';
+import { eq, and, gte, lte, inArray } from 'drizzle-orm';
 import { requireSessionFamily } from '@/lib/family';
 import { getDb } from '@/db/client';
-import { children as childrenTable, subjects as subjectsTable, logEntries } from '@/db/schema';
+import { children as childrenTable, subjects as subjectsTable, logEntries, attachments as attachmentsTable } from '@/db/schema';
 import PrintButton from '@/components/PrintButton';
+
+type EntryRow = typeof logEntries.$inferSelect;
+type AttachmentRow = typeof attachmentsTable.$inferSelect;
+
+function EntryReportItem({ entry, entryAttachments }: { entry: EntryRow; entryAttachments: AttachmentRow[] }) {
+  return (
+    <li>
+      <strong>{formatDate(entry.entryDate)}</strong> — {entry.title}
+      <span className="report-type"> ({ACTIVITY_LABELS[entry.activityType] ?? entry.activityType})</span>
+      {entry.description && <p>{entry.description}</p>}
+      {entry.externalLink && <p className="report-link">{entry.externalLink}</p>}
+      {entryAttachments.length > 0 && (
+        <div className="report-attachments">
+          {entryAttachments.map((a) =>
+            a.contentType.startsWith('image/') ? (
+              // eslint-disable-next-line @next/next/no-img-element -- authenticated same-origin proxy, not a static/optimizable asset
+              <img key={a.id} src={`/api/attachments/${a.id}/file`} alt={a.originalName} className="report-attachment-img" />
+            ) : (
+              <p key={a.id} className="report-link">📄 {a.originalName}</p>
+            )
+          )}
+        </div>
+      )}
+    </li>
+  );
+}
 
 const ACTIVITY_LABELS: Record<string, string> = {
   note: 'Note',
@@ -66,6 +92,17 @@ export default async function EvidenceReportPage({
     .where(and(...conditions))
     .orderBy(logEntries.entryDate);
 
+  const entryIds = entries.map((e) => e.id);
+  const allAttachments = entryIds.length
+    ? await db.select().from(attachmentsTable).where(inArray(attachmentsTable.logEntryId, entryIds))
+    : [];
+  const attachmentsByEntry = new Map<string, AttachmentRow[]>();
+  for (const attachment of allAttachments) {
+    const list = attachmentsByEntry.get(attachment.logEntryId) ?? [];
+    list.push(attachment);
+    attachmentsByEntry.set(attachment.logEntryId, list);
+  }
+
   const entriesBySubject = new Map<string, typeof entries>();
   const generalEntries: typeof entries = [];
   for (const entry of entries) {
@@ -117,12 +154,7 @@ export default async function EvidenceReportPage({
             <h2>{subject.name}</h2>
             <ul>
               {subjectEntries.map((entry) => (
-                <li key={entry.id}>
-                  <strong>{formatDate(entry.entryDate)}</strong> — {entry.title}
-                  <span className="report-type"> ({ACTIVITY_LABELS[entry.activityType] ?? entry.activityType})</span>
-                  {entry.description && <p>{entry.description}</p>}
-                  {entry.externalLink && <p className="report-link">{entry.externalLink}</p>}
-                </li>
+                <EntryReportItem key={entry.id} entry={entry} entryAttachments={attachmentsByEntry.get(entry.id) ?? []} />
               ))}
             </ul>
           </section>
@@ -134,12 +166,7 @@ export default async function EvidenceReportPage({
           <h2>General</h2>
           <ul>
             {generalEntries.map((entry) => (
-              <li key={entry.id}>
-                <strong>{formatDate(entry.entryDate)}</strong> — {entry.title}
-                <span className="report-type"> ({ACTIVITY_LABELS[entry.activityType] ?? entry.activityType})</span>
-                {entry.description && <p>{entry.description}</p>}
-                {entry.externalLink && <p className="report-link">{entry.externalLink}</p>}
-              </li>
+              <EntryReportItem key={entry.id} entry={entry} entryAttachments={attachmentsByEntry.get(entry.id) ?? []} />
             ))}
           </ul>
         </section>

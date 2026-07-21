@@ -38,7 +38,16 @@ function buildCsp(nonce: string): string {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data:",
     "font-src 'self'",
-    "connect-src 'self'",
+    // Only the upload *token* comes from our own API
+    // (/api/attachments/upload) — the file bytes themselves are PUT
+    // directly from the browser to Vercel's blob API
+    // (https://vercel.com/api/blob, confirmed from the @vercel/blob
+    // source rather than assumed — this is exactly the class of bug the
+    // script-src nonce fix caught earlier), which then stores the blob at
+    // a per-store *.blob.vercel-storage.com URL. Attachment reads never
+    // hit either origin from the browser: the app only ever displays
+    // files via our own authenticated proxy route.
+    "connect-src 'self' https://vercel.com https://*.blob.vercel-storage.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

@@ -18,16 +18,17 @@ to a Local Authority automatically, and is not a substitute for reading the
 actual guidance that applies to your family. It just makes it easy to keep
 the kind of dated, organised record that such conversations tend to need.
 
-**Ambiguity resolved — file uploads:** the request mentioned uploading
-evidence with a date attached. This build (per explicit scope decision)
-stores entries as dated metadata — title, notes, subject, activity type,
-and an optional link to evidence hosted elsewhere — rather than accepting
-file uploads directly, to avoid adding a storage provider and its security
-surface (upload validation, storage quotas, access-controlled serving) in
-this pass. Every entry still has a date and a place for a link, so a
-guardian can reference a photo/PDF hosted in their own cloud storage. File
-upload can be added later (e.g. Vercel Blob) without changing the schema
-shape (`log_entries.external_link` would become a stored file reference).
+**File uploads (revised from the initial scope decision):** the first pass
+of this app stored evidence as dated metadata plus an optional external
+link only, deliberately deferring file uploads to avoid adding a storage
+provider in that pass. The user then asked for a real upload button, so
+this was added: log entries can now have up to 6 uploaded photos/PDFs via
+Vercel Blob (`attachments` table, see section 4). Blobs are written with
+`access: 'private'` — there is no public URL, every read is re-authorized
+per request (see T7/T8 in section 2) — which keeps this consistent with
+the data-minimisation posture below: evidence photos of a child are
+personal data too, and shouldn't be reachable by anyone who merely obtains
+a link.
 
 **Ambiguity resolved — accounts:** "each child should have their own
 profile" is satisfied by scoping children to a **family**, not to an
@@ -50,14 +51,16 @@ data).
 ## 2. Threat model
 
 **Assets worth protecting**
-- A1: Children's educational records — names, year groups, and a
-  detailed log of their day-to-day activities. This is sensitive,
-  child-related personal data; treat it as confidential even though it is
-  not a special category of health/biometric data.
+- A1: Children's educational records — names, year groups, a detailed log
+  of their day-to-day activities, and now uploaded photos/PDFs of their
+  work. This is sensitive, child-related personal data; treat it as
+  confidential even though it is not a special category of
+  health/biometric data.
 - A2: Guardian authentication credentials / session tokens.
 - A3: Family invite codes (leaking one lets a stranger join a family and
   see/edit a child's full record).
-- A4: DB credentials and SMTP/OAuth secrets.
+- A4: DB credentials, SMTP/OAuth secrets, and the Vercel Blob read-write
+  token.
 - A5: Data integrity of the evidence trail — entries must not be silently
   lossy or falsifiable in a way that undermines their use as a record.
 
@@ -68,11 +71,19 @@ data).
 - E3: Family invite creation/acceptance endpoints.
 - E4: Client-rendered strings (child names, entry titles/notes, evidence
   links) shown back in the DOM, including the printable report.
+- E5: The attachment upload-token endpoint (`/api/attachments/upload`) and
+  the file-serving proxy (`/api/attachments/[id]/file`) — the two points
+  where this app's authorization logic decides who may write to, or read
+  from, Blob storage.
 
 **Trust boundaries**
 - Browser (untrusted) ↔ Next.js server (trusted, holds secrets).
 - Server ↔ Postgres (trusted network, credentialed).
 - Server ↔ SMTP/OAuth provider (authenticated, but responses untrusted).
+- Browser ↔ Vercel Blob storage (the browser uploads file *bytes* directly
+  to Blob storage using a short-lived, narrowly-scoped client token our
+  server issues; the server never proxies the upload traffic itself, only
+  the authorization decision and, on read, the download).
 
 **Top threats and the neutralising design decision**
 
@@ -83,7 +94,9 @@ data).
 | T3 | **Stored XSS** via a child's name, an entry's title/notes, or an evidence link rendered into the DOM or the printable report. | No `dangerouslySetInnerHTML` anywhere; all rendering goes through JSX/React auto-escaping. Evidence links are rendered as `href` on an anchor tag (never interpolated into an `on*` handler or evaluated), and are restricted to `http:`/`https:` schemes at write time, closing off `javascript:`/`data:` link XSS. |
 | T4 | **Invite code guessing/replay** — a stranger enumerates or reuses an invite to join a family and see children's records. | Invite codes are 24 random bytes (base64url, effectively unguessable), expire after 7 days, and are marked used atomically inside the same DB transaction that inserts the new membership row — a code can be consumed exactly once. |
 | T5 | **Evidence tampering / accidental loss** — a misclick destroys a term's worth of records. | "Remove child" archives (`is_archived = true`) rather than hard-deletes; children, subjects, and log entries are recoverable. Deleting an individual log entry is still a hard delete (a single mis-logged entry should be correctable), but requires an explicit confirm step in the UI. |
-| T6 | **Rate/abuse on write endpoints** — scripted account/child/entry creation. | Per-user fixed-window rate limits on every write endpoint (`src/lib/rate-limit.ts`). |
+| T6 | **Rate/abuse on write endpoints** — scripted account/child/entry creation. | Per-user fixed-window rate limits on every write endpoint (`src/lib/rate-limit.ts`), including attachment upload-token issuance. |
+| T7 | **Unauthorized attachment upload** — a guardian (or a compromised session) writes a file to a log entry they don't own, or uploads a disallowed type/oversized file to burn storage. | `/api/attachments/upload`'s `onBeforeGenerateToken` verifies the target log entry belongs to the caller's family *before* issuing a client token, and the token itself constrains `allowedContentTypes` (images + PDF only) and `maximumSizeInBytes` (15MB) — enforced by Blob storage, not just the browser's file picker. A per-entry cap (6 files) is enforced when the DB row is confirmed. |
+| T8 | **Evidence file exposure** — a photo of a child's schoolwork becomes reachable by anyone who obtains a link, e.g. from a forwarded email or a leaked screenshot. | Blobs are written with `access: 'private'`, not `'public'`: there is no bare URL that serves the file. The only read path is `/api/attachments/[id]/file`, which re-runs the same family-ownership check as every other resource before streaming bytes back, so a link is useless without an active, authorized session. |
 
 ## 3. Stack decision
 
@@ -101,8 +114,12 @@ domain model replaced entirely)**
   because it's convenient to test with and some guardians may prefer it.
   No password is ever stored either way.
 - **zod** for input validation on every API route.
-- **No file storage provider** in this pass (see section 1's "Ambiguity
-  resolved — file uploads").
+- **Vercel Blob (`@vercel/blob`) for evidence file storage**, added once
+  file upload was requested (see section 1). Client-side upload (browser
+  writes bytes directly to Blob storage using a server-issued, narrowly
+  scoped token) rather than routing file bytes through a Next.js API
+  route, so uploads aren't bounded by serverless function body-size
+  limits. `access: 'private'` throughout — see T7/T8.
 - **No push notifications / service worker / cron** — none of the
   previous build's notification engine applies to this domain; it has
   been removed entirely rather than left dormant.
@@ -112,9 +129,6 @@ domain model replaced entirely)**
   aren't the ones producing the compliance record, and it adds an
   auth-model complexity (child accounts, parental oversight of a child's
   own login) with no benefit here.
-- **File uploads via Vercel Blob in this pass:** rejected for now per the
-  explicit MVP scope decision (metadata-first); the schema is shaped so
-  this can be added later without a breaking migration.
 - **One family per household enforced structurally beyond a unique
   `user_id` constraint:** a user belongs to at most one family in this
   model. Supporting a guardian who manages two unrelated households is
@@ -134,13 +148,20 @@ children            — (family_id, name, year_group?, notes?, is_archived)
 subjects            — (child_id, name, sort_order, is_archived) — per-child, not fixed
 log_entries         — (child_id, subject_id?, author_user_id, entry_date, title,
                         description?, activity_type, external_link?)
+attachments         — (log_entry_id, pathname, original_name, content_type,
+                        size, uploaded_by_user_id) — uploaded evidence files
 ```
 
 Key relationships: `family_members.user_id` is unique (one family per
-guardian). `subjects.child_id` and `log_entries.child_id` both cascade from
-`children`, which cascades from `families` — deleting a family (not exposed
-in the UI) removes everything beneath it; deleting a child is a soft
-archive, not a cascade delete, by design (T5 above).
+guardian). `subjects.child_id`, `log_entries.child_id`, and
+`attachments.log_entry_id` all cascade from their parent, up to `families`
+— deleting a family (not exposed in the UI) removes everything beneath it;
+deleting a child is a soft archive, not a cascade delete, by design (T5
+above). Deleting a log entry (a hard delete, unlike archiving a child) or
+an individual attachment explicitly deletes the underlying Blob file
+first — the DB's cascade delete only removes the `attachments` row, it
+has no way to reach into Blob storage, so the API routes do that step
+themselves before the DB delete.
 
 `log_entries.entry_date` is a plain date (no time component) chosen by the
 guardian — separate from `created_at` (when the row was actually inserted)
@@ -186,10 +207,25 @@ check that would slow down the actual point of the app.
 8. Config/docs updated to match; dependency vulnerability in the
    Nodemailer transitive chain resolved via an `overrides` pin (see
    `package.json`) rather than accepted as a known risk.
+9. Photo/PDF evidence uploads added on request: `attachments` table;
+   `/api/attachments/upload` (client-token issuance with an ownership
+   check, private access, content-type/size constraints);
+   `/api/entries/[id]/attachments` (confirm + persist after upload);
+   `/api/attachments/[id]` (delete, blob + row); `/api/attachments/[id]/file`
+   (authenticated read proxy). CSP `connect-src` widened to allow the
+   browser's direct-to-Blob-storage upload request (`*.blob.vercel-storage.com`)
+   — the same class of bug as the earlier CSP nonce fix, caught this time
+   before shipping by checking the SDK's actual upload target rather than
+   assuming.
 
 ## 7. Known limitations / possible next steps
 
-- No file uploads yet (by explicit scope decision — see section 1).
+- Uploaded files aren't scanned for malware, and photos aren't stripped
+  of EXIF metadata (which can include GPS coordinates) before storage.
+  Access is already restricted to the child's own family (T7/T8), so this
+  isn't an exposure to strangers, but if a guardian ever exports/forwards
+  a photo outside the app, any embedded location data travels with it. A
+  follow-up could strip EXIF server-side on upload.
 - No email verification "resend" flow beyond Auth.js's default magic-link
   expiry/retry.
 - No bulk export beyond the per-child printable report (e.g. a

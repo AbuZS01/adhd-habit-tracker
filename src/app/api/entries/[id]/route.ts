@@ -1,11 +1,12 @@
 import 'server-only';
 import { NextResponse, type NextRequest } from 'next/server';
 import { eq, and } from 'drizzle-orm';
+import { del } from '@vercel/blob';
 import { requireFamily, unauthorizedResponse, notFoundResponse, rateLimitedResponse } from '@/lib/api-auth';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 import { updateLogEntrySchema, idParamSchema } from '@/lib/validation';
 import { getDb } from '@/db/client';
-import { children, subjects, logEntries } from '@/db/schema';
+import { children, subjects, logEntries, attachments } from '@/db/schema';
 
 async function loadOwnedEntry(familyId: string, entryId: string) {
   const db = getDb();
@@ -68,6 +69,16 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!existing) return notFoundResponse();
 
   const db = getDb();
+
+  // Blob files aren't cascade-deleted by the DB FK — clean them up
+  // explicitly before removing the entry (whose row cascade-deletes the
+  // attachment records themselves).
+  const entryAttachments = await db
+    .select({ pathname: attachments.pathname })
+    .from(attachments)
+    .where(eq(attachments.logEntryId, id));
+  await Promise.all(entryAttachments.map((a) => del(a.pathname).catch(() => undefined)));
+
   await db.delete(logEntries).where(eq(logEntries.id, id));
 
   return NextResponse.json({ ok: true });
