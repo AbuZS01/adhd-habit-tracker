@@ -31,9 +31,8 @@ export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   const isAuthRoute = pathname.startsWith('/api/auth/');
-  const isCronRoute = pathname.startsWith('/api/cron/');
 
-  if (!isAuthRoute && !isCronRoute && !hasSessionCookie(req)) {
+  if (!isAuthRoute && !hasSessionCookie(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

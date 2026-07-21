@@ -12,8 +12,6 @@ const csp = [
   "img-src 'self' data:",
   "font-src 'self'",
   "connect-src 'self'",
-  "manifest-src 'self'",
-  "worker-src 'self'",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -37,14 +35,6 @@ const nextConfig = {
         // Apply security headers to every route, including API routes (SR-13).
         source: '/:path*',
         headers: securityHeaders,
-      },
-      {
-        // Service worker must not be cached aggressively so updates propagate.
-        source: '/sw.js',
-        headers: [
-          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
-          { key: 'Service-Worker-Allowed', value: '/' },
-        ],
       },
     ];
   },

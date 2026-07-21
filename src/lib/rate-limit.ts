@@ -28,7 +28,7 @@ export interface RateLimitResult {
 }
 
 /**
- * @param key Unique key for the limited actor+action, e.g. `user:<id>:habits:POST`.
+ * @param key Unique key for the limited actor+action, e.g. `user:<id>:children:POST`.
  * @param limit Max requests allowed within the window.
  * @param windowMs Window size in milliseconds.
  */
@@ -55,7 +55,8 @@ export function checkRateLimit(key: string, limit: number, windowMs: number): Ra
 
 // Sensible defaults for each write endpoint category.
 export const RATE_LIMITS = {
-  habitsWrite: { limit: 30, windowMs: 60_000 }, // 30/min per user
-  checkinsWrite: { limit: 60, windowMs: 60_000 }, // 60/min per user
-  pushSubscribe: { limit: 10, windowMs: 60_000 }, // 10/min per user
+  childrenWrite: { limit: 20, windowMs: 60_000 }, // 20/min per user
+  subjectsWrite: { limit: 30, windowMs: 60_000 }, // 30/min per user
+  entriesWrite: { limit: 60, windowMs: 60_000 }, // 60/min per user
+  inviteCreate: { limit: 5, windowMs: 60_000 }, // 5/min per user
 } as const;
