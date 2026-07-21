@@ -102,7 +102,6 @@ export default async function EvidenceReportPage({
       <header className="report-header">
         <h1>{child.name}</h1>
         {child.yearGroup && <p>{child.yearGroup}</p>}
-        {child.dateOfBirth && <p>Date of birth: {formatDate(child.dateOfBirth)}</p>}
         <p>
           Period: {validFrom ? formatDate(validFrom) : 'all records'} – {validTo ? formatDate(validTo) : 'present'}
         </p>

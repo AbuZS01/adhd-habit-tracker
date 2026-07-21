@@ -59,7 +59,6 @@ export default async function ChildPage({ params }: { params: Promise<{ id: stri
             child={{
               id: child.id,
               name: child.name,
-              dateOfBirth: child.dateOfBirth,
               yearGroup: child.yearGroup,
               notes: child.notes,
             }}

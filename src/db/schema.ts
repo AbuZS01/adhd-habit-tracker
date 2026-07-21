@@ -114,12 +114,17 @@ export const familyInvites = pgTable('family_invites', {
 
 /**
  * children — one profile per home-educated child. Scoped by `family_id`.
+ *
+ * Deliberately does not store date of birth: for this app's purpose (a
+ * subject/evidence log), a year group is all that's needed to organise
+ * records, and a child's DOB is unnecessary personal data to hold under
+ * GDPR's data minimisation principle (UK GDPR Art. 5(1)(c)) — collecting
+ * it would create a retention/security burden with no matching benefit.
  */
 export const children = pgTable('children', {
   id: uuid('id').primaryKey().defaultRandom(),
   familyId: uuid('family_id').notNull().references(() => families.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
-  dateOfBirth: date('date_of_birth', { mode: 'string' }),
   // Free-text, e.g. "Year 4" or "Key Stage 2" — no fixed curriculum imposed.
   yearGroup: text('year_group'),
   notes: text('notes'),

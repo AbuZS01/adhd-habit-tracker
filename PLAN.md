@@ -35,10 +35,22 @@ individual login, because home education is normally a household
 decision made by more than one adult. A family can have multiple
 **guardians** (see section 4) who all see the same children.
 
+**Data minimisation (UK GDPR Art. 5(1)(c)):** a child's profile stores
+only **name** and **year group** — no date of birth. A DOB was considered
+during design but dropped: nothing in this app's actual purpose (organising
+a subject/evidence log) needs an exact birth date, so collecting it would
+be personal data held beyond what's necessary for the processing, with no
+matching benefit. Year group alone is enough to group/label a child's
+records. This is a general principle applied throughout, not just to this
+one field — see section 4 for the rest of the data model (log entries
+store only what's needed to reconstruct an activity; family membership
+stores only email/name via the auth provider, not any HR-style profile
+data).
+
 ## 2. Threat model
 
 **Assets worth protecting**
-- A1: Children's educational records — names, dates of birth, and a
+- A1: Children's educational records — names, year groups, and a
   detailed log of their day-to-day activities. This is sensitive,
   child-related personal data; treat it as confidential even though it is
   not a special category of health/biometric data.
@@ -118,7 +130,7 @@ accounts/sessions/verification_token — Auth.js adapter tables
 families            — the tenancy boundary; everything else hangs off family_id
 family_members      — (family_id, user_id, role: owner|guardian) — multi-guardian
 family_invites      — single-use, expiring (7d) codes an owner generates
-children            — (family_id, name, date_of_birth?, year_group?, notes?, is_archived)
+children            — (family_id, name, year_group?, notes?, is_archived)
 subjects            — (child_id, name, sort_order, is_archived) — per-child, not fixed
 log_entries         — (child_id, subject_id?, author_user_id, entry_date, title,
                         description?, activity_type, external_link?)
@@ -190,3 +202,9 @@ check that would slow down the actual point of the app.
   invite (see rejected option in section 3); the invite-accept endpoint
   fails closed with a clear error in that case rather than silently
   reassigning anyone.
+- "Remove child" only archives (T5) — there is no UI action yet for a
+  guardian to permanently erase a child's record (GDPR's right to
+  erasure). Archiving was chosen by default to protect against
+  accidental data loss of evidence, but a genuine hard-delete path
+  (distinct from archive, with its own explicit confirmation) would be
+  needed for full erasure-request support and is a natural next step.

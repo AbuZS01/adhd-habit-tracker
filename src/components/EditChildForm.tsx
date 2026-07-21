@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 export interface ChildData {
   id: string;
   name: string;
-  dateOfBirth: string | null;
   yearGroup: string | null;
   notes: string | null;
 }
@@ -17,7 +16,6 @@ export default function EditChildForm({ child }: { child: ChildData }) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState(child.name);
-  const [dateOfBirth, setDateOfBirth] = useState(child.dateOfBirth ?? '');
   const [yearGroup, setYearGroup] = useState(child.yearGroup ?? '');
   const [notes, setNotes] = useState(child.notes ?? '');
 
@@ -30,7 +28,6 @@ export default function EditChildForm({ child }: { child: ChildData }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name,
-          dateOfBirth: dateOfBirth || null,
           yearGroup: yearGroup || null,
           notes: notes || null,
         }),
@@ -58,10 +55,6 @@ export default function EditChildForm({ child }: { child: ChildData }) {
       <label>
         Name
         <input value={name} onChange={(e) => setName(e.target.value)} required maxLength={80} />
-      </label>
-      <label>
-        Date of birth
-        <input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} />
       </label>
       <label>
         Year group / key stage

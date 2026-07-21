@@ -11,7 +11,8 @@ See `PLAN.md` for the full design rationale and data model.
 
 - Each **family** account can have multiple **guardians** (co-parents,
   carers) sharing access — invite a co-guardian from the Family page.
-- Each **child** gets their own profile (name, date of birth, year group).
+- Each **child** gets their own profile (name, year group). No date of
+  birth is collected — see "Security notes" below.
 - Each child has **subjects** (seeded with English/Maths/Science/Wider
   Learning, fully editable — there's no fixed curriculum requirement for
   home education in the UK).
@@ -56,6 +57,9 @@ to work.
 
 ## Security notes
 
+- **Data minimisation (UK GDPR Art. 5(1)(c)):** a child's profile stores
+  only name and year group — no date of birth, since nothing in this
+  app's purpose needs it. See `PLAN.md` section 1 for the rationale.
 - Every child/subject/log-entry query is scoped by the signed-in guardian's
   `family_id`, derived server-side from their session — never from a
   client-supplied id. A record belonging to another family always 404s.

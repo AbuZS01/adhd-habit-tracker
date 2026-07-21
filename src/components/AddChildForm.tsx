@@ -8,7 +8,6 @@ export default function AddChildForm() {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState('');
-  const [dateOfBirth, setDateOfBirth] = useState('');
   const [yearGroup, setYearGroup] = useState('');
 
   function handleSubmit(e: React.FormEvent) {
@@ -21,7 +20,6 @@ export default function AddChildForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name,
-          dateOfBirth: dateOfBirth || undefined,
           yearGroup: yearGroup || undefined,
         }),
       });
@@ -33,7 +31,6 @@ export default function AddChildForm() {
       }
 
       setName('');
-      setDateOfBirth('');
       setYearGroup('');
       router.refresh();
     });
@@ -44,10 +41,6 @@ export default function AddChildForm() {
       <label>
         Child&apos;s name
         <input value={name} onChange={(e) => setName(e.target.value)} required maxLength={80} />
-      </label>
-      <label>
-        Date of birth (optional)
-        <input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} />
       </label>
       <label>
         Year group / key stage (optional)

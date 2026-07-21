@@ -77,18 +77,15 @@ const httpUrlSchema = z
 export const childNameSchema = trimmedText(80);
 export const yearGroupSchema = optionalTrimmedText(40);
 export const childNotesSchema = optionalTrimmedText(1000);
-export const dateOfBirthSchema = isoDateSchema({ allowFuture: false }).nullable().optional();
 
 export const createChildSchema = z.object({
   name: childNameSchema,
-  dateOfBirth: dateOfBirthSchema,
   yearGroup: yearGroupSchema,
   notes: childNotesSchema,
 });
 
 export const updateChildSchema = z.object({
   name: childNameSchema.optional(),
-  dateOfBirth: dateOfBirthSchema,
   yearGroup: yearGroupSchema,
   notes: nullableTrimmedText(1000),
   isArchived: z.boolean().optional(),

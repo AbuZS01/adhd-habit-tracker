@@ -45,7 +45,6 @@ export async function POST(req: NextRequest) {
       .values({
         familyId: session.familyId,
         name: parsed.data.name,
-        dateOfBirth: parsed.data.dateOfBirth ?? null,
         yearGroup: parsed.data.yearGroup ?? null,
         notes: parsed.data.notes ?? null,
       })
