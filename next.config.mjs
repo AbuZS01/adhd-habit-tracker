@@ -1,25 +1,10 @@
 /** @type {import('next').NextConfig} */
 
-// Content-Security-Policy: restrict everything to same-origin by default.
-// 'unsafe-inline' is NOT used for scripts. Next.js injects its runtime via
-// hashed/nonced inline scripts only when needed; we avoid inline event
-// handlers and dangerouslySetInnerHTML everywhere (SR-2), so a strict CSP
-// without 'unsafe-inline' script-src is achievable.
-const csp = [
-  "default-src 'self'",
-  "script-src 'self'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data:",
-  "font-src 'self'",
-  "connect-src 'self'",
-  "frame-ancestors 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "object-src 'none'",
-].join('; ');
-
+// Content-Security-Policy is intentionally NOT set here: it must carry a
+// fresh per-request nonce so Next.js's own inline hydration scripts can
+// run under a strict `script-src`, and next.config's headers() only
+// supports static values. See src/middleware.ts for the real CSP.
 const securityHeaders = [
-  { key: 'Content-Security-Policy', value: csp },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
