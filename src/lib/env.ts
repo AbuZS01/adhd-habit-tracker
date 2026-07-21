@@ -11,17 +11,20 @@ import 'server-only';
 const serverEnvSchema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   AUTH_SECRET: z.string().min(16, 'AUTH_SECRET must be at least 16 characters'),
+  AUTH_URL: z.string().url().optional(),
+  // Email magic-link sign-in (primary provider — realistic for parents who
+  // may not have a GitHub account). SMTP connection string, e.g.
+  // smtp://user:pass@smtp.example.com:587
+  EMAIL_SERVER: z.string().min(1).optional(),
+  EMAIL_FROM: z.string().min(1).optional(),
+  // Optional secondary provider.
   AUTH_GITHUB_ID: z.string().min(1).optional(),
   AUTH_GITHUB_SECRET: z.string().min(1).optional(),
-  AUTH_URL: z.string().url().optional(),
-  VAPID_PUBLIC_KEY: z.string().min(1, 'VAPID_PUBLIC_KEY is required'),
-  VAPID_PRIVATE_KEY: z.string().min(1, 'VAPID_PRIVATE_KEY is required'),
-  VAPID_SUBJECT: z
-    .string()
-    .refine((v) => v.startsWith('mailto:') || v.startsWith('https://'), {
-      message: 'VAPID_SUBJECT must be a mailto: or https: URI',
-    }),
-  CRON_SECRET: z.string().min(16, 'CRON_SECRET must be at least 16 characters'),
+  // Optional: enables photo/PDF evidence uploads. The @vercel/blob SDK
+  // reads this from process.env directly wherever it's called; it's
+  // listed here too so this schema documents the full set of optional
+  // configuration, matching EMAIL_SERVER/AUTH_GITHUB_ID above.
+  BLOB_READ_WRITE_TOKEN: z.string().min(1).optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
@@ -45,25 +48,4 @@ export function getServerEnv(): ServerEnv {
   }
   cached = parsed.data;
   return cached;
-}
-
-/**
- * Public env values that are safe (and required) to reach the client bundle.
- * NEXT_PUBLIC_* vars are inlined at build time by Next.js; only the VAPID
- * *public* key belongs here. Never add a secret to this schema (SR-1).
- */
-const publicEnvSchema = z.object({
-  NEXT_PUBLIC_VAPID_PUBLIC_KEY: z.string().min(1, 'NEXT_PUBLIC_VAPID_PUBLIC_KEY is required'),
-});
-
-export function getPublicEnv() {
-  const parsed = publicEnvSchema.safeParse({
-    NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
-  });
-  if (!parsed.success) {
-    // Do not throw hard in client-rendered paths; return empty and let the
-    // caller degrade gracefully (push subscribe button disabled).
-    return { NEXT_PUBLIC_VAPID_PUBLIC_KEY: '' };
-  }
-  return parsed.data;
 }

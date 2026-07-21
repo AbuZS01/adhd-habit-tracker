@@ -1,5 +1,5 @@
 {
-  "id": "5ebfd34e-e715-440b-ac1a-1e69e0cf1076",
+  "id": "fcc0bb39-d0a9-466f-895b-c5da13b37aff",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -105,8 +105,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.checkins": {
-      "name": "checkins",
+    "public.children": {
+      "name": "children",
       "schema": "",
       "columns": {
         "id": {
@@ -116,105 +116,8 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "habit_id": {
-          "name": "habit_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "checked_at": {
-          "name": "checked_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "checkins_habit_idx": {
-          "name": "checkins_habit_idx",
-          "columns": [
-            {
-              "expression": "habit_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "checkins_user_idx": {
-          "name": "checkins_user_idx",
-          "columns": [
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "checkins_habit_id_habits_id_fk": {
-          "name": "checkins_habit_id_habits_id_fk",
-          "tableFrom": "checkins",
-          "tableTo": "habits",
-          "columnsFrom": [
-            "habit_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "checkins_user_id_users_id_fk": {
-          "name": "checkins_user_id_users_id_fk",
-          "tableFrom": "checkins",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.habits": {
-      "name": "habits",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "user_id": {
-          "name": "user_id",
+        "family_id": {
+          "name": "family_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
@@ -225,31 +128,23 @@
           "primaryKey": false,
           "notNull": true
         },
-        "cue": {
-          "name": "cue",
+        "date_of_birth": {
+          "name": "date_of_birth",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "year_group": {
+          "name": "year_group",
           "type": "text",
           "primaryKey": false,
           "notNull": false
         },
-        "note": {
-          "name": "note",
+        "notes": {
+          "name": "notes",
           "type": "text",
           "primaryKey": false,
           "notNull": false
-        },
-        "schedule_time": {
-          "name": "schedule_time",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'09:00'"
-        },
-        "active_days": {
-          "name": "active_days",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'[0,1,2,3,4,5,6]'::jsonb"
         },
         "is_archived": {
           "name": "is_archived",
@@ -274,11 +169,11 @@
         }
       },
       "indexes": {
-        "habits_user_idx": {
-          "name": "habits_user_idx",
+        "children_family_idx": {
+          "name": "children_family_idx",
           "columns": [
             {
-              "expression": "user_id",
+              "expression": "family_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -291,12 +186,12 @@
         }
       },
       "foreignKeys": {
-        "habits_user_id_users_id_fk": {
-          "name": "habits_user_id_users_id_fk",
-          "tableFrom": "habits",
-          "tableTo": "users",
+        "children_family_id_families_id_fk": {
+          "name": "children_family_id_families_id_fk",
+          "tableFrom": "children",
+          "tableTo": "families",
           "columnsFrom": [
-            "user_id"
+            "family_id"
           ],
           "columnsTo": [
             "id"
@@ -311,8 +206,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.notification_log": {
-      "name": "notification_log",
+    "public.families": {
+      "name": "families",
       "schema": "",
       "columns": {
         "id": {
@@ -322,71 +217,104 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "user_id": {
-          "name": "user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "habit_id": {
-          "name": "habit_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "kind": {
-          "name": "kind",
+        "name": {
+          "name": "name",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "variant_key": {
-          "name": "variant_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "sent_at": {
-          "name": "sent_at",
+        "created_at": {
+          "name": "created_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.family_invites": {
+      "name": "family_invites",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
         },
-        "status": {
-          "name": "status",
+        "family_id": {
+          "name": "family_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "used_at": {
+          "name": "used_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "used_by_user_id": {
+          "name": "used_by_user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
         }
       },
       "indexes": {
-        "notification_log_user_habit_idx": {
-          "name": "notification_log_user_habit_idx",
+        "family_invites_code_idx": {
+          "name": "family_invites_code_idx",
           "columns": [
             {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "habit_id",
+              "expression": "code",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             }
           ],
-          "isUnique": false,
+          "isUnique": true,
           "concurrently": false,
           "method": "btree",
           "with": {}
         },
-        "notification_log_sent_at_idx": {
-          "name": "notification_log_sent_at_idx",
+        "family_invites_family_idx": {
+          "name": "family_invites_family_idx",
           "columns": [
             {
-              "expression": "sent_at",
+              "expression": "family_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -399,12 +327,12 @@
         }
       },
       "foreignKeys": {
-        "notification_log_user_id_users_id_fk": {
-          "name": "notification_log_user_id_users_id_fk",
-          "tableFrom": "notification_log",
-          "tableTo": "users",
+        "family_invites_family_id_families_id_fk": {
+          "name": "family_invites_family_id_families_id_fk",
+          "tableFrom": "family_invites",
+          "tableTo": "families",
           "columnsFrom": [
-            "user_id"
+            "family_id"
           ],
           "columnsTo": [
             "id"
@@ -412,12 +340,129 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "notification_log_habit_id_habits_id_fk": {
-          "name": "notification_log_habit_id_habits_id_fk",
-          "tableFrom": "notification_log",
-          "tableTo": "habits",
+        "family_invites_created_by_user_id_users_id_fk": {
+          "name": "family_invites_created_by_user_id_users_id_fk",
+          "tableFrom": "family_invites",
+          "tableTo": "users",
           "columnsFrom": [
-            "habit_id"
+            "created_by_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "family_invites_used_by_user_id_users_id_fk": {
+          "name": "family_invites_used_by_user_id_users_id_fk",
+          "tableFrom": "family_invites",
+          "tableTo": "users",
+          "columnsFrom": [
+            "used_by_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.family_members": {
+      "name": "family_members",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "family_id": {
+          "name": "family_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'guardian'"
+        },
+        "joined_at": {
+          "name": "joined_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "family_members_user_idx": {
+          "name": "family_members_user_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "family_members_family_idx": {
+          "name": "family_members_family_idx",
+          "columns": [
+            {
+              "expression": "family_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "family_members_family_id_families_id_fk": {
+          "name": "family_members_family_id_families_id_fk",
+          "tableFrom": "family_members",
+          "tableTo": "families",
+          "columnsFrom": [
+            "family_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "family_members_user_id_users_id_fk": {
+          "name": "family_members_user_id_users_id_fk",
+          "tableFrom": "family_members",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
           ],
           "columnsTo": [
             "id"
@@ -432,8 +477,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.push_subscriptions": {
-      "name": "push_subscriptions",
+    "public.log_entries": {
+      "name": "log_entries",
       "schema": "",
       "columns": {
         "id": {
@@ -443,32 +488,51 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "user_id": {
-          "name": "user_id",
+        "child_id": {
+          "name": "child_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
-        "endpoint": {
-          "name": "endpoint",
+        "subject_id": {
+          "name": "subject_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "author_user_id": {
+          "name": "author_user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entry_date": {
+          "name": "entry_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "p256dh": {
-          "name": "p256dh",
+        "description": {
+          "name": "description",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
-        "auth": {
-          "name": "auth",
+        "activity_type": {
+          "name": "activity_type",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "default": "'note'"
         },
-        "user_agent": {
-          "name": "user_agent",
+        "external_link": {
+          "name": "external_link",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -480,8 +544,8 @@
           "notNull": true,
           "default": "now()"
         },
-        "last_seen_at": {
-          "name": "last_seen_at",
+        "updated_at": {
+          "name": "updated_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
@@ -489,35 +553,85 @@
         }
       },
       "indexes": {
-        "push_subs_user_endpoint_idx": {
-          "name": "push_subs_user_endpoint_idx",
+        "log_entries_child_idx": {
+          "name": "log_entries_child_idx",
           "columns": [
             {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "endpoint",
+              "expression": "child_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             }
           ],
-          "isUnique": true,
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "log_entries_subject_idx": {
+          "name": "log_entries_subject_idx",
+          "columns": [
+            {
+              "expression": "subject_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "log_entries_date_idx": {
+          "name": "log_entries_date_idx",
+          "columns": [
+            {
+              "expression": "entry_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
           "concurrently": false,
           "method": "btree",
           "with": {}
         }
       },
       "foreignKeys": {
-        "push_subscriptions_user_id_users_id_fk": {
-          "name": "push_subscriptions_user_id_users_id_fk",
-          "tableFrom": "push_subscriptions",
+        "log_entries_child_id_children_id_fk": {
+          "name": "log_entries_child_id_children_id_fk",
+          "tableFrom": "log_entries",
+          "tableTo": "children",
+          "columnsFrom": [
+            "child_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "log_entries_subject_id_subjects_id_fk": {
+          "name": "log_entries_subject_id_subjects_id_fk",
+          "tableFrom": "log_entries",
+          "tableTo": "subjects",
+          "columnsFrom": [
+            "subject_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "log_entries_author_user_id_users_id_fk": {
+          "name": "log_entries_author_user_id_users_id_fk",
+          "tableFrom": "log_entries",
           "tableTo": "users",
           "columnsFrom": [
-            "user_id"
+            "author_user_id"
           ],
           "columnsTo": [
             "id"
@@ -577,6 +691,89 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.subjects": {
+      "name": "subjects",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "child_id": {
+          "name": "child_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "is_archived": {
+          "name": "is_archived",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "subjects_child_idx": {
+          "name": "subjects_child_idx",
+          "columns": [
+            {
+              "expression": "child_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "subjects_child_id_children_id_fk": {
+          "name": "subjects_child_id_children_id_fk",
+          "tableFrom": "subjects",
+          "tableTo": "children",
+          "columnsFrom": [
+            "child_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.users": {
       "name": "users",
       "schema": "",
@@ -611,27 +808,6 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false
-        },
-        "timezone": {
-          "name": "timezone",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'UTC'"
-        },
-        "quiet_hours_start": {
-          "name": "quiet_hours_start",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 22
-        },
-        "quiet_hours_end": {
-          "name": "quiet_hours_end",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 8
         },
         "created_at": {
           "name": "created_at",

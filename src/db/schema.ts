@@ -3,9 +3,9 @@ import {
   text,
   timestamp,
   uuid,
+  date,
   boolean,
   integer,
-  jsonb,
   index,
   uniqueIndex,
   primaryKey,
@@ -13,7 +13,7 @@ import {
 import type { AdapterAccountType } from 'next-auth/adapters';
 
 /**
- * users — one row per authenticated person. Auth.js manages sign-in; we
+ * users — one row per authenticated guardian. Auth.js manages sign-in; we
  * store only what the app needs (no password hash — SR-5 / A2).
  */
 export const users = pgTable('users', {
@@ -22,12 +22,6 @@ export const users = pgTable('users', {
   emailVerified: timestamp('email_verified', { withTimezone: true }),
   name: text('name'),
   image: text('image'),
-  // IANA timezone string, validated by zod before write (SR-6). Used by the
-  // nudge engine for quiet-hours math.
-  timezone: text('timezone').notNull().default('UTC'),
-  // Quiet hours as 0-23 local-hour bounds; nudges never fire in this window.
-  quietHoursStart: integer('quiet_hours_start').notNull().default(22),
-  quietHoursEnd: integer('quiet_hours_end').notNull().default(8),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   emailIdx: uniqueIndex('users_email_idx').on(table.email),
@@ -68,88 +62,165 @@ export const verificationTokens = pgTable('verification_token', {
 }));
 
 /**
- * habits — small, user-owned list. `user_id` is always derived from the
- * session server-side (T1 / SR-4), never trusted from client input.
+ * families — the account/tenancy boundary. Every child, subject, and log
+ * entry belongs to exactly one family. All queries scope by `family_id`
+ * derived from the session user's membership row, never from client input
+ * (T1 / SR-4 equivalent for this app).
  */
-export const habits = pgTable('habits', {
+export const families = pgTable('families', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  // Habit name, length-capped + control-chars stripped by zod (SR-6).
   name: text('name').notNull(),
-  // Optional implementation-intention cue, e.g. "After I pour coffee".
-  cue: text('cue'),
-  // Free-text note, length-capped.
-  note: text('note'),
-  // Preferred local time-of-day for the nudge, "HH:MM" 24h string.
-  scheduleTime: text('schedule_time').notNull().default('09:00'),
-  // Days of week this habit is active, 0=Sun..6=Sat.
-  activeDays: jsonb('active_days').$type<number[]>().notNull().default([0, 1, 2, 3, 4, 5, 6]),
+  // Which UK nation's home-education rules apply. Drives which legal-standard
+  // text is shown on the dashboard and evidence report (src/lib/legal-content.ts)
+  // — the four nations' regimes diverge materially, so this can't be
+  // guessed or defaulted. Null until the family sets it.
+  nation: text('nation').$type<'england' | 'wales' | 'scotland' | 'northern_ireland'>(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * family_members — join table enabling multiple guardians (co-parents,
+ * carers) per family. A user belongs to at most one family (unique on
+ * user_id): this app models one household's education record, not a user
+ * juggling several unrelated households.
+ */
+export const familyMembers = pgTable('family_members', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  familyId: uuid('family_id').notNull().references(() => families.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  // 'owner' created the family; 'guardian' joined via invite. Both have full
+  // read/write on the family's children/subjects/entries — only invite
+  // creation and member removal are owner-only.
+  role: text('role').$type<'owner' | 'guardian'>().notNull().default('guardian'),
+  joinedAt: timestamp('joined_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  userIdx: uniqueIndex('family_members_user_idx').on(table.userId),
+  familyIdx: index('family_members_family_idx').on(table.familyId),
+}));
+
+/**
+ * family_invites — single-use, expiring invite codes an owner generates so a
+ * co-guardian can join the family. The code is a random token, not guessable
+ * from the family id; consuming it sets `used_at` so it can't be replayed.
+ */
+export const familyInvites = pgTable('family_invites', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  familyId: uuid('family_id').notNull().references(() => families.id, { onDelete: 'cascade' }),
+  code: text('code').notNull(),
+  createdByUserId: uuid('created_by_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  usedAt: timestamp('used_at', { withTimezone: true }),
+  usedByUserId: uuid('used_by_user_id').references(() => users.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  codeIdx: uniqueIndex('family_invites_code_idx').on(table.code),
+  familyIdx: index('family_invites_family_idx').on(table.familyId),
+}));
+
+/**
+ * children — one profile per home-educated child. Scoped by `family_id`.
+ *
+ * Deliberately does not store date of birth: for this app's purpose (a
+ * subject/evidence log), a year group is all that's needed to organise
+ * records, and a child's DOB is unnecessary personal data to hold under
+ * GDPR's data minimisation principle (UK GDPR Art. 5(1)(c)) — collecting
+ * it would create a retention/security burden with no matching benefit.
+ */
+export const children = pgTable('children', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  familyId: uuid('family_id').notNull().references(() => families.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  // Free-text, e.g. "Year 4" or "Key Stage 2" — no fixed curriculum imposed.
+  yearGroup: text('year_group'),
+  notes: text('notes'),
   isArchived: boolean('is_archived').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
-  userIdx: index('habits_user_idx').on(table.userId),
+  familyIdx: index('children_family_idx').on(table.familyId),
 }));
 
 /**
- * checkins — one row per completed check-in. Streak math is always computed
- * server-side from these rows, never trusted from the client.
+ * subjects — per-child sections (Maths, English, Science, ...). Scoped to a
+ * child (not just the family) so siblings can have different subjects.
+ * Seeded with sensible defaults when a child profile is created; guardians
+ * can rename, add, and archive freely.
  */
-export const checkins = pgTable('checkins', {
+export const subjects = pgTable('subjects', {
   id: uuid('id').primaryKey().defaultRandom(),
-  habitId: uuid('habit_id').notNull().references(() => habits.id, { onDelete: 'cascade' }),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  checkedAt: timestamp('checked_at', { withTimezone: true }).notNull().defaultNow(),
-}, (table) => ({
-  habitIdx: index('checkins_habit_idx').on(table.habitId),
-  userIdx: index('checkins_user_idx').on(table.userId),
-}));
-
-/**
- * push_subscriptions — one live row per (user_id, endpoint). Never returned
- * to any client (SR-3). Deleted immediately on 404/410 from the push
- * service (SR-8).
- */
-export const pushSubscriptions = pgTable('push_subscriptions', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  endpoint: text('endpoint').notNull(),
-  p256dh: text('p256dh').notNull(),
-  auth: text('auth').notNull(),
-  userAgent: text('user_agent'),
+  childId: uuid('child_id').notNull().references(() => children.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  // Sort order for consistent display; lower first.
+  sortOrder: integer('sort_order').notNull().default(0),
+  isArchived: boolean('is_archived').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
-  userEndpointIdx: uniqueIndex('push_subs_user_endpoint_idx').on(table.userId, table.endpoint),
+  childIdx: index('subjects_child_idx').on(table.childId),
 }));
 
 /**
- * notification_log — every nudge attempt, used for dedupe/backoff/escalation
- * decisions in the nudge engine and for measuring real-world delivery.
+ * log_entries — the evidence record: one dated entry per piece of learning
+ * activity, note, or output. `entry_date` is guardian-chosen (the date the
+ * activity happened), separate from `created_at` (when it was logged), so
+ * evidence can be backfilled accurately for LA reporting.
  */
-export const notificationLog = pgTable('notification_log', {
+export const logEntries = pgTable('log_entries', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  habitId: uuid('habit_id').notNull().references(() => habits.id, { onDelete: 'cascade' }),
-  // 'initial' | 'escalation'
-  kind: text('kind').notNull(),
-  // Which message-variant template was used (for rotation/dedupe).
-  variantKey: text('variant_key').notNull(),
-  sentAt: timestamp('sent_at', { withTimezone: true }).notNull().defaultNow(),
-  // 'sent' | 'failed' | 'skipped_quiet_hours' | 'dead_subscription'
-  status: text('status').notNull(),
+  childId: uuid('child_id').notNull().references(() => children.id, { onDelete: 'cascade' }),
+  // Nullable: an entry can be general/cross-curricular rather than tied to
+  // one subject (e.g. a museum trip covering several subjects).
+  subjectId: uuid('subject_id').references(() => subjects.id, { onDelete: 'set null' }),
+  authorUserId: uuid('author_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  entryDate: date('entry_date', { mode: 'string' }).notNull(),
+  title: text('title').notNull(),
+  description: text('description'),
+  // 'work_sample' | 'note' | 'outing' | 'resource' | 'assessment' | 'other'
+  activityType: text('activity_type').notNull().default('note'),
+  // Optional link to evidence hosted elsewhere (e.g. a photo in cloud
+  // storage). Validated https/http only at write time (SR-6 equivalent).
+  externalLink: text('external_link'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
-  userHabitDayIdx: index('notification_log_user_habit_idx').on(table.userId, table.habitId),
-  sentAtIdx: index('notification_log_sent_at_idx').on(table.sentAt),
+  childIdx: index('log_entries_child_idx').on(table.childId),
+  subjectIdx: index('log_entries_subject_idx').on(table.subjectId),
+  dateIdx: index('log_entries_date_idx').on(table.entryDate),
+}));
+
+/**
+ * attachments — uploaded evidence files (photos, PDFs) for a log entry.
+ * Stores the Vercel Blob `pathname`, not a public URL: blobs are written
+ * with `access: 'private'`, so reading one back requires the read-write
+ * token, which only ever happens server-side in the authenticated proxy
+ * route (`/api/attachments/[id]/file`) after an ownership check — the
+ * file is never reachable via a bare link, unlike a public blob URL.
+ */
+export const attachments = pgTable('attachments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  logEntryId: uuid('log_entry_id').notNull().references(() => logEntries.id, { onDelete: 'cascade' }),
+  pathname: text('pathname').notNull(),
+  originalName: text('original_name').notNull(),
+  contentType: text('content_type').notNull(),
+  size: integer('size').notNull(),
+  uploadedByUserId: uuid('uploaded_by_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  logEntryIdx: index('attachments_log_entry_idx').on(table.logEntryId),
 }));
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
-export type Habit = typeof habits.$inferSelect;
-export type NewHabit = typeof habits.$inferInsert;
-export type Checkin = typeof checkins.$inferSelect;
-export type NewCheckin = typeof checkins.$inferInsert;
-export type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect;
-export type NewPushSubscriptionRow = typeof pushSubscriptions.$inferInsert;
-export type NotificationLogRow = typeof notificationLog.$inferSelect;
-export type NewNotificationLogRow = typeof notificationLog.$inferInsert;
+export type Family = typeof families.$inferSelect;
+export type NewFamily = typeof families.$inferInsert;
+export type FamilyMember = typeof familyMembers.$inferSelect;
+export type NewFamilyMember = typeof familyMembers.$inferInsert;
+export type FamilyInvite = typeof familyInvites.$inferSelect;
+export type NewFamilyInvite = typeof familyInvites.$inferInsert;
+export type Child = typeof children.$inferSelect;
+export type NewChild = typeof children.$inferInsert;
+export type Subject = typeof subjects.$inferSelect;
+export type NewSubject = typeof subjects.$inferInsert;
+export type LogEntry = typeof logEntries.$inferSelect;
+export type NewLogEntry = typeof logEntries.$inferInsert;
+export type Attachment = typeof attachments.$inferSelect;
+export type NewAttachment = typeof attachments.$inferInsert;

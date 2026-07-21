@@ -1,225 +1,320 @@
-# Build Plan: ADHD Habit Tracker ("inattentive-first" reminders)
+# Build Plan: Home Education Log
 
 ## 1. Restated goal
 
-A web-based habit tracker built specifically for people with **inattentive-type ADHD**, whose core failure mode with existing tools is *tuning out* reminders (habituation) rather than impulsively dismissing them. The product's differentiator is not the habit list — it is the **notification and re-engagement engine**: reminders that vary their timing, wording, and channel so the brain cannot filter them out; implementation-intention prompts ("after X, I will Y") that convert reminders into automatic cues; ultra-low-friction check-ins (one tap); forgiving streaks that reward showing up without punishing missed days; and escalating multi-nudge sequences so a single ignored ping is not the end of the loop. Primary user is a single operator-type individual (the requester and people like them), signing in to track a small number of habits on their phone's home screen and desktop.
+A web app for UK families who home-educate their children, built to make it
+easy to (a) keep a running, dated record of each child's learning across
+subjects, and (b) produce that record as a clear, dated response if a
+council makes an informal enquiry about a child's education. Each child
+gets their own profile; each child's subjects are separate sections;
+every note, activity, or upload-in-spirit (this build stores evidence as
+dated text entries with an optional link, not file uploads — see section
+3) carries a date so a chronological record can be reconstructed at any
+time.
 
-**Ambiguity resolved:** The request said "app." I am building a **PWA (installable web app)**, not a native iOS/Android app, because a single builder agent can ship it end-to-end this session and deploy to Vercel with no app-store review. This choice has one important consequence for notifications, addressed in detail in section 5 and section 10.
+**Not legal advice.** This app is a record-keeping tool. It does not
+determine what counts as a "suitable" education, does not submit anything
+to a council automatically, and is not a substitute for reading the
+actual guidance that applies to your family and nation. It just makes it
+easy to keep the kind of dated, organised record that such conversations
+tend to need. See "Four-nations legal landscape" below for why this
+matters more than it might first appear.
+
+**Four-nations legal landscape (added after user-supplied research — treat
+as very important context, not a footnote):** home-education law is not
+uniform across the UK, and an earlier draft of this app's copy overclaimed
+by implying a "Children Not in School" registration duty was already in
+force. Correcting that:
+- There is **no registration duty in force anywhere in the UK today**.
+  England and Wales have *legislated* for one — the Children's Wellbeing
+  and Schools Act 2026 (Royal Assent 29 April 2026) inserts a "Children
+  Not in School" register duty into the Education Act 1996 — but
+  commencement depends on regulations not yet made, realistically no
+  earlier than 2027 (DfE signals have drifted toward 2028). Scotland and
+  Northern Ireland are entirely unaffected by that Act and run their own
+  separate regimes.
+- **No UK nation gives a council the right to enter a home or compel
+  seeing a child.** England's incoming power is only to *request* a
+  visit; refusal is "a relevant factor," not a breach. Overstating this
+  would misinform the exact audience this app serves.
+- The one thing that *is* true everywhere, today, is the underlying duty
+  to provide a suitable education (Education Act 1996 s.7 in
+  England/Wales/NI in substance; Education (Scotland) Act 1980 s.30 in
+  Scotland) — and that **a dated, child-specific education report is the
+  standard, sufficient response** to a council's informal enquiry or a
+  formal "satisfy" notice; work samples are explicitly not required.
+  This is exactly what this app's evidence report already produces —
+  the research validated the core feature rather than requiring a
+  pivot.
+- **Design response:** a `families.nation` field (England/Wales/Scotland/
+  Northern Ireland) drives nation-specific legal-standard text
+  (`src/lib/legal-content.ts`) shown on the dashboard and evidence
+  report, instead of one generic (and previously England-biased,
+  overclaiming) blurb. Content is deliberately hedged, dated
+  (`LEGAL_CONTENT_LAST_REVIEWED`), and framed as "helps you prepare
+  evidence," never "ensures compliance" — per the research's explicit
+  warning that a compliance guarantee is false comfort and a liability
+  given the regulations are still being written.
+- **Explicitly deferred** (research Tier 2/3 items, not built this
+  pass — see section 7): SEN/EHC/IDP/statement flags on a child profile;
+  optional curriculum-framework tagging; a "required vs requested"
+  matrix per nation; deadline reminders (e.g. Scotland's 6-week consent
+  guidance, England's 15-day register-response window once commenced);
+  monetisation/pricing tiers. These are genuine product decisions, not
+  omissions — flagged for the user to prioritise rather than built
+  speculatively.
+
+**File uploads (revised from the initial scope decision):** the first pass
+of this app stored evidence as dated metadata plus an optional external
+link only, deliberately deferring file uploads to avoid adding a storage
+provider in that pass. The user then asked for a real upload button, so
+this was added: log entries can now have up to 6 uploaded photos/PDFs via
+Vercel Blob (`attachments` table, see section 4). Blobs are written with
+`access: 'private'` — there is no public URL, every read is re-authorized
+per request (see T7/T8 in section 2) — which keeps this consistent with
+the data-minimisation posture below: evidence photos of a child are
+personal data too, and shouldn't be reachable by anyone who merely obtains
+a link.
+
+**Ambiguity resolved — accounts:** "each child should have their own
+profile" is satisfied by scoping children to a **family**, not to an
+individual login, because home education is normally a household
+decision made by more than one adult. A family can have multiple
+**guardians** (see section 4) who all see the same children.
+
+**Data minimisation (UK GDPR Art. 5(1)(c)):** a child's profile stores
+only **name** and **year group** — no date of birth. A DOB was considered
+during design but dropped: nothing in this app's actual purpose (organising
+a subject/evidence log) needs an exact birth date, so collecting it would
+be personal data held beyond what's necessary for the processing, with no
+matching benefit. Year group alone is enough to group/label a child's
+records. This is a general principle applied throughout, not just to this
+one field — see section 4 for the rest of the data model (log entries
+store only what's needed to reconstruct an activity; family membership
+stores only email/name via the auth provider, not any HR-style profile
+data).
 
 ## 2. Threat model
 
 **Assets worth protecting**
-- A1: User's habit/routine data. This is **health-adjacent** — an ADHD diagnosis is implied by using the app, and routines (meds, therapy, sleep, hygiene) can be sensitive. Treat it as confidential.
-- A2: Authentication credentials / session tokens.
-- A3: Push subscription endpoints (leaking these lets a third party spam the user's device).
-- A4: VAPID private key and any DB credentials (server secrets).
-- A5: App availability and the user's trust (a habit app that spams or leaks kills adoption instantly).
+- A1: Children's educational records — names, year groups, a detailed log
+  of their day-to-day activities, and now uploaded photos/PDFs of their
+  work. This is sensitive, child-related personal data; treat it as
+  confidential even though it is not a special category of
+  health/biometric data.
+- A2: Guardian authentication credentials / session tokens.
+- A3: Family invite codes (leaking one lets a stranger join a family and
+  see/edit a child's full record).
+- A4: DB credentials, SMTP/OAuth secrets, and the Vercel Blob read-write
+  token.
+- A5: Data integrity of the evidence trail — entries must not be silently
+  lossy or falsifiable in a way that undermines their use as a record.
 
-**Entry points (where untrusted input/actors reach the system)**
-- E1: Auth endpoints (sign-in / sign-up).
-- E2: Habit CRUD and check-in API (authenticated user input: habit names, notes, times).
-- E3: Push subscription registration endpoint.
-- E4: The scheduled cron endpoint that fans out notifications.
-- E5: Client-rendered strings (habit names/notes shown back in the DOM and inside notification bodies).
-- E6: The service worker (runs with elevated origin privileges).
+**Entry points**
+- E1: Auth endpoints (magic-link email request, OAuth callback).
+- E2: Children/subjects/log-entries CRUD API (authenticated guardian
+  input: names, dates, free text, links).
+- E3: Family invite creation/acceptance endpoints.
+- E4: Client-rendered strings (child names, entry titles/notes, evidence
+  links) shown back in the DOM, including the printable report.
+- E5: The attachment upload-token endpoint (`/api/attachments/upload`) and
+  the file-serving proxy (`/api/attachments/[id]/file`) — the two points
+  where this app's authorization logic decides who may write to, or read
+  from, Blob storage.
 
 **Trust boundaries**
-- Browser (fully untrusted) ↔ serverless API (trusted, holds secrets).
-- Serverless API ↔ Postgres (trusted network, credentialed).
-- Serverless API ↔ push service (Apple/Google/Mozilla endpoints; authenticated by VAPID, but responses are untrusted input).
-- Cron trigger ↔ cron endpoint (must be authenticated so the fan-out can't be triggered by anyone).
+- Browser (untrusted) ↔ Next.js server (trusted, holds secrets).
+- Server ↔ Postgres (trusted network, credentialed).
+- Server ↔ SMTP/OAuth provider (authenticated, but responses untrusted).
+- Browser ↔ Vercel Blob storage (the browser uploads file *bytes* directly
+  to Blob storage using a short-lived, narrowly-scoped client token our
+  server issues; the server never proxies the upload traffic itself, only
+  the authorization decision and, on read, the download).
 
-**Top threats and the design decision that neutralises each**
+**Top threats and the neutralising design decision**
 
 | # | Threat | Neutralising design decision |
 |---|--------|------------------------------|
-| T1 | **Broken access control** — user A reads/edits user B's habits or check-ins by changing an ID. | Every query is scoped by `user_id` derived from the verified session server-side, never from a client-supplied ID. Authorization checked on every row, not just authentication. (SR-4) |
-| T2 | **Secret leakage** — VAPID private key, DB URL, or auth secret shipped to the client or committed to git. | All secrets live only in Vercel environment variables, read only in server code. No secret ever imported into a client component or the service worker. `.env*` git-ignored. (SR-1) |
-| T3 | **Stored XSS via habit name/note** rendered into the DOM or into a push notification body. | Framework auto-escaping for DOM; no `dangerouslySetInnerHTML`. Notification `title`/`body` are treated as plain text only; strip control chars and cap length server-side before sending. (SR-2, SR-6) |
-| T4 | **Unauthenticated cron / notification-spam abuse** — attacker hits the fan-out endpoint or the subscribe endpoint to blast a device or exhaust push quota. | Cron endpoint requires a secret bearer token that only Vercel Cron knows (SR-7). Subscribe endpoint is authenticated and one subscription-per-device is upserted, not appended (SR-3). Rate-limit write endpoints (SR-9). |
-| T5 | **Push subscription leak / stale endpoint abuse** — endpoints stored insecurely or dead endpoints retried forever. | Endpoints stored server-side only, tied to `user_id`, never returned to other users. On `404`/`410` from the push service the subscription is deleted immediately (SR-3, SR-8). |
+| T1 | **Broken tenancy isolation** — guardian in family A reads/edits family B's child, subject, or entry by guessing/changing an id. | Every query is scoped by `family_id` derived server-side from the session's `family_members` row (`requireSessionFamily()`), never from a client-supplied id. Subject and log-entry ownership is verified by joining back to `children.family_id`, not trusted from the record's own id. |
+| T2 | **Secret leakage** — DB URL, SMTP credentials, or `AUTH_SECRET` shipped to the client. | All secrets read only in `src/lib/env.ts` and server-only modules (`server-only` import). No `NEXT_PUBLIC_*` secret exists in this app (no client-side secret is needed at all, unlike the previous push-notification build). |
+| T3 | **Stored XSS** via a child's name, an entry's title/notes, or an evidence link rendered into the DOM or the printable report. | No `dangerouslySetInnerHTML` anywhere; all rendering goes through JSX/React auto-escaping. Evidence links are rendered as `href` on an anchor tag (never interpolated into an `on*` handler or evaluated), and are restricted to `http:`/`https:` schemes at write time, closing off `javascript:`/`data:` link XSS. |
+| T4 | **Invite code guessing/replay** — a stranger enumerates or reuses an invite to join a family and see children's records. | Invite codes are 24 random bytes (base64url, effectively unguessable), expire after 7 days, and are marked used atomically inside the same DB transaction that inserts the new membership row — a code can be consumed exactly once. |
+| T5 | **Evidence tampering / accidental loss** — a misclick destroys a term's worth of records. | "Remove child" archives (`is_archived = true`) rather than hard-deletes; children, subjects, and log entries are recoverable. Deleting an individual log entry is still a hard delete (a single mis-logged entry should be correctable), but requires an explicit confirm step in the UI. |
+| T6 | **Rate/abuse on write endpoints** — scripted account/child/entry creation. | Per-user fixed-window rate limits on every write endpoint (`src/lib/rate-limit.ts`), including attachment upload-token issuance. |
+| T7 | **Unauthorized attachment upload** — a guardian (or a compromised session) writes a file to a log entry they don't own, or uploads a disallowed type/oversized file to burn storage. | `/api/attachments/upload`'s `onBeforeGenerateToken` verifies the target log entry belongs to the caller's family *before* issuing a client token, and the token itself constrains `allowedContentTypes` (images + PDF only) and `maximumSizeInBytes` (15MB) — enforced by Blob storage, not just the browser's file picker. A per-entry cap (6 files) is enforced when the DB row is confirmed. |
+| T8 | **Evidence file exposure** — a photo of a child's schoolwork becomes reachable by anyone who obtains a link, e.g. from a forwarded email or a leaked screenshot. | Blobs are written with `access: 'private'`, not `'public'`: there is no bare URL that serves the file. The only read path is `/api/attachments/[id]/file`, which re-runs the same family-ownership check as every other resource before streaming bytes back, so a link is useless without an active, authorized session. |
 
 ## 3. Stack decision
 
-**Chosen**
-
-- **Next.js (App Router) on Vercel** — one repo gives both the client PWA and the server API/cron with no separate backend to secure; secrets stay server-side by construction. Safe default: server/client boundary is explicit, and route handlers keep secrets off the client.
-- **TypeScript** — types catch a whole class of injection/None-handling bugs before review. Safe default: reduces "untyped client input trusted as safe" mistakes.
-- **Vercel Postgres (Neon-backed) via a typed query layer (Drizzle ORM)** — persistent storage for habits/check-ins/subscriptions across devices. Parameterised queries by default kill SQL injection. Safe default: no hand-built SQL strings.
-- **Auth.js (NextAuth) with a single provider (email magic-link OR GitHub OAuth)** — no password storage to leak; sessions are httpOnly cookies. Safe default: we never hold a password hash (A2 shrinks).
-- **`web-push` (VAPID) for browser push + Vercel Cron for scheduling** — the *only* reliable way to deliver reminders that fire when the app is closed. This is the core justification below.
-- **PWA (manifest + service worker)** so it installs to the iOS/Android home screen, which is the *precondition* for push on iOS.
-- **Plain React + CSS modules (or Tailwind), no heavy UI kit** — the UI is small; interactivity (one-tap check-ins, streak animations) justifies React over static HTML here.
-
-**Why server-scheduled push, not client-side scheduled notifications:** research confirms iOS PWAs have **no Periodic Background Sync / Background Fetch** and web push only works for home-screen-installed apps; client-scheduled `showNotification` timers do not survive the app being closed. Therefore the schedule must live on the **server** and be delivered by **Vercel Cron → web-push**. This also enables the anti-habituation logic (variable timing/wording chosen server-side) which is the whole point.
+**Chosen (kept from the environment's existing Next.js/Postgres setup,
+domain model replaced entirely)**
+- **Next.js (App Router) + TypeScript on Vercel** — server components read
+  the DB directly for pages; API routes handle all mutations from client
+  components. One deploy target, no separate backend to secure.
+- **Postgres via Drizzle ORM** — parameterised queries by default (kills
+  SQL injection), typed schema.
+- **Auth.js (NextAuth v5) — email magic-link (Nodemailer provider) as the
+  primary sign-in method, GitHub OAuth optional.** Magic-link is the
+  realistic default because the target user (a parent doing home
+  education) is unlikely to have a GitHub account; GitHub is kept only
+  because it's convenient to test with and some guardians may prefer it.
+  No password is ever stored either way.
+- **zod** for input validation on every API route.
+- **Vercel Blob (`@vercel/blob`) for evidence file storage**, added once
+  file upload was requested (see section 1). Client-side upload (browser
+  writes bytes directly to Blob storage using a server-issued, narrowly
+  scoped token) rather than routing file bytes through a Next.js API
+  route, so uploads aren't bounded by serverless function body-size
+  limits. `access: 'private'` throughout — see T7/T8.
+- **No push notifications / service worker / cron** — none of the
+  previous build's notification engine applies to this domain; it has
+  been removed entirely rather than left dormant.
 
 **Rejected**
-- **Native React Native / Flutter app:** most reliable notifications, but requires app-store accounts, review, signing, and cannot be shipped end-to-end by one agent this session. Revisit only if push reliability proves insufficient (section 10).
-- **Firebase / OneSignal push SaaS:** faster to wire, but adds a third-party data processor holding health-adjacent user identifiers and a recurring-config dependency. `web-push` + VAPID keeps data first-party and set-and-forget.
-- **Supabase/Firebase full backend:** more moving parts and another vendor boundary than a single Next.js + Postgres app needs.
-- **Passwords / custom auth:** rejected to avoid storing credentials (A2).
-- **localStorage/IndexedDB-only, no backend:** rejected — data wouldn't sync across the phone and desktop, and there'd be no server to run the anti-habituation scheduler.
+- **A shared child login** (the child signs in): rejected — children
+  aren't the ones producing the compliance record, and it adds an
+  auth-model complexity (child accounts, parental oversight of a child's
+  own login) with no benefit here.
+- **One family per household enforced structurally beyond a unique
+  `user_id` constraint:** a user belongs to at most one family in this
+  model. Supporting a guardian who manages two unrelated households is
+  out of scope; if needed later it requires a join-table redesign
+  (`family_members` already has the right shape — the constraint to
+  relax is the uniqueness on `user_id`).
 
-## 4. File and folder structure
+## 4. Data model
 
 ```
-C:\Users\Amir_\projects\adhd-habit-tracker\
-├─ .env.local                      # gitignored; local secrets only
-├─ .env.example                    # placeholder keys, committed
-├─ .gitignore
-├─ next.config.mjs
-├─ package.json
-├─ tsconfig.json
-├─ drizzle.config.ts
-├─ vercel.json                     # Vercel Cron schedule definition
-├─ README.md                       # setup + SR checklist for the reviewer
-├─ public\
-│  ├─ manifest.webmanifest         # PWA manifest (installable)
-│  ├─ icons\                       # home-screen icons (192/512, maskable)
-│  └─ sw.js                        # service worker: push + notificationclick only
-├─ drizzle\
-│  └─ migrations\                  # generated SQL migrations
-└─ src\
-   ├─ db\
-   │  ├─ schema.ts                 # users, habits, checkins, push_subscriptions, notification_log
-   │  └─ client.ts                 # server-only DB connection
-   ├─ lib\
-   │  ├─ auth.ts                   # Auth.js config (server-only)
-   │  ├─ push.ts                   # web-push send wrapper + dead-subscription cleanup
-   │  ├─ nudge-engine.ts           # anti-habituation: timing jitter, message variants, escalation
-   │  ├─ validation.ts             # zod schemas for every input
-   │  ├─ rate-limit.ts             # per-user/IP limiter for write endpoints
-   │  └─ env.ts                    # zod-validated server env loader (fails fast if missing)
-   ├─ app\
-   │  ├─ layout.tsx
-   │  ├─ page.tsx                  # today view: habits + one-tap check-in
-   │  ├─ onboarding\page.tsx       # <60s setup, implementation-intention builder
-   │  ├─ habits\page.tsx           # manage habits (few, not many)
-   │  ├─ settings\page.tsx         # quiet hours, channels, notification prefs
-   │  └─ api\
-   │     ├─ auth\[...nextauth]\route.ts
-   │     ├─ habits\route.ts        # GET/POST (auth + zod + user-scoped)
-   │     ├─ habits\[id]\route.ts   # PATCH/DELETE (ownership check)
-   │     ├─ checkins\route.ts      # POST one-tap check-in
-   │     ├─ push\subscribe\route.ts   # upsert subscription for this user+device
-   │     ├─ push\unsubscribe\route.ts
-   │     └─ cron\dispatch\route.ts    # BEARER-token-gated fan-out (called by Vercel Cron)
-   ├─ components\
-   │  ├─ CheckInButton.tsx
-   │  ├─ StreakBadge.tsx           # forgiving streak / "showed up" counter
-   │  ├─ NudgePreview.tsx
-   │  └─ InstallPrompt.tsx         # guides iOS "Add to Home Screen"
-   └─ sw\
-      └─ register.ts               # client registers /public/sw.js
+users               — one row per guardian (Auth.js-managed identity only)
+accounts/sessions/verification_token — Auth.js adapter tables
+families            — the tenancy boundary; everything else hangs off family_id.
+                        nation? (england|wales|scotland|northern_ireland) drives
+                        which nation's legal-standard text is shown (see section 1)
+family_members      — (family_id, user_id, role: owner|guardian) — multi-guardian
+family_invites      — single-use, expiring (7d) codes an owner generates
+children            — (family_id, name, year_group?, notes?, is_archived)
+subjects            — (child_id, name, sort_order, is_archived) — per-child, not fixed
+log_entries         — (child_id, subject_id?, author_user_id, entry_date, title,
+                        description?, activity_type, external_link?)
+attachments         — (log_entry_id, pathname, original_name, content_type,
+                        size, uploaded_by_user_id) — uploaded evidence files
 ```
 
-## 5. Data and control flow
+Key relationships: `family_members.user_id` is unique (one family per
+guardian). `subjects.child_id`, `log_entries.child_id`, and
+`attachments.log_entry_id` all cascade from their parent, up to `families`
+— deleting a family (not exposed in the UI) removes everything beneath it;
+deleting a child is a soft archive, not a cascade delete, by design (T5
+above). Deleting a log entry (a hard delete, unlike archiving a child) or
+an individual attachment explicitly deletes the underlying Blob file
+first — the DB's cascade delete only removes the `attachments` row, it
+has no way to reach into Blob storage, so the API routes do that step
+themselves before the DB delete.
 
-**Where secrets live (server only, never in client code):** `AUTH_SECRET`, the auth provider secret, `DATABASE_URL`, `VAPID_PRIVATE_KEY`, and `CRON_SECRET` are all read exclusively in `src/lib/*` and route handlers under `src/app/api/**`. The **VAPID public key** is the only push value exposed to the client (it must be, to subscribe) and is delivered via a public env var. It is not a secret.
+`log_entries.entry_date` is a plain date (no time component) chosen by the
+guardian — separate from `created_at` (when the row was actually inserted)
+so past activities can be logged retroactively with an accurate date,
+which matters for a record that needs to reflect when learning actually
+happened.
 
-**Sign-in flow:** Browser → `/api/auth/*` (Auth.js) → magic-link email or OAuth → httpOnly, Secure, SameSite session cookie. Client never sees a token in JS.
+## 5. Access control summary
 
-**Create/track a habit:** Browser form → `POST /api/habits` → session verified → **zod validation** of name/schedule/implementation-intention text → insert with `user_id` from session → return sanitized record. Habit names/notes are stored raw but only ever rendered through React's auto-escaping and length-capped before any notification use.
+Every protected page/route calls `requireSessionFamily()`
+(`src/lib/family.ts`), which resolves the signed-in guardian's
+`family_id` and auto-provisions a new family (this guardian as `owner`) on
+first login — no separate "create your family" onboarding step. Every
+subsequent query filters by that `family_id` (directly for children, via a
+join through `children` for subjects and log entries). A record ID from
+another family always 404s rather than leaking existence.
 
-**One-tap check-in:** `CheckInButton` → `POST /api/checkins` with only a `habitId` → server verifies that habit belongs to the session user (T1) → inserts a check-in row → returns updated streak. No streak math trusted from the client.
+Owner vs. guardian role: both can create/edit children, subjects, and log
+entries. Only the `owner` can generate invite codes, rename the family, or
+remove a guardian — this keeps membership changes auditable to the person
+who set the family up, while day-to-day logging isn't gated behind a role
+check that would slow down the actual point of the app.
 
-**Push subscription:** After install + permission grant, `sw/register.ts` subscribes with the VAPID **public** key → `POST /api/push/subscribe` sends the `PushSubscription` JSON → server **upserts** keyed on `(user_id, endpoint)` so a device has exactly one live row (T4/T5).
+## 6. Build order (as implemented)
 
-**The notification engine (the core):**
-1. **Vercel Cron** hits `POST /api/cron/dispatch` on a fixed cadence (e.g. every 15 min), carrying the `CRON_SECRET` bearer token. The handler rejects any request without it (T4/SR-7).
-2. `nudge-engine.ts` selects habits whose next nudge is due, **respecting the user's quiet hours** and timezone.
-3. For each due habit it produces an **anti-habituation** notification: (a) **timing jitter** — the scheduled time is offset by a small pseudo-random delta so it never fires at the exact same clock minute; (b) **rotating message variants** — implementation-intention framing ("After you pour coffee, take your meds") rotated with encouragement and curiosity framings so wording never repeats verbatim; (c) **escalation** — if a habit is not checked in, a second, differently-worded nudge is queued a short interval later, then the engine backs off for the day (forgiving, not nagging).
-4. `push.ts` sends via `web-push` with the VAPID keypair. Any `404`/`410` deletes that subscription (SR-8). Sends are logged to `notification_log` for dedupe/backoff and so the same nudge isn't sent twice.
-5. `public/sw.js` receives the `push` event and calls `showNotification` with the **plain-text** title/body; `notificationclick` opens the today view deep-linked to that habit's one-tap check-in.
+1. Removed the previous build's domain entirely (habits/checkins/push/cron/
+   service worker) rather than leaving dead code alongside the new domain.
+2. New Drizzle schema: families, family_members, family_invites, children,
+   subjects, log_entries (Auth.js tables kept, trimmed of habit-specific
+   user fields).
+3. Auth.js reconfigured: Nodemailer (email magic-link) as primary
+   provider, GitHub optional; env loader updated.
+4. `src/lib/family.ts`: session→family resolution with auto-provisioning,
+   invite creation/lookup/acceptance.
+5. zod schemas for every child/subject/log-entry/invite input.
+6. API routes: children, children/[id], children/[id]/subjects,
+   subjects/[id], entries, entries/[id], family, family/invite,
+   family/invite/accept, family/members/[userId].
+7. Pages: dashboard (sign-in + children list + add-child), child profile
+   (subjects, log entries, add-entry form, subject management), printable
+   evidence report (date-range filter, print stylesheet), family
+   management (rename, invite, members), invite-acceptance flow.
+8. Config/docs updated to match; dependency vulnerability in the
+   Nodemailer transitive chain resolved via an `overrides` pin (see
+   `package.json`) rather than accepted as a known risk.
+9. Photo/PDF evidence uploads added on request: `attachments` table;
+   `/api/attachments/upload` (client-token issuance with an ownership
+   check, private access, content-type/size constraints);
+   `/api/entries/[id]/attachments` (confirm + persist after upload);
+   `/api/attachments/[id]` (delete, blob + row); `/api/attachments/[id]/file`
+   (authenticated read proxy). CSP `connect-src` widened to allow the
+   browser's direct-to-Blob-storage upload request (`*.blob.vercel-storage.com`)
+   — the same class of bug as the earlier CSP nonce fix, caught this time
+   before shipping by checking the SDK's actual upload target rather than
+   assuming.
+10. Four-nations legal research applied: `families.nation` field +
+    migration; `src/lib/legal-content.ts` (hedged, dated, per-nation legal
+    standard + current-duties content); nation selector on the Family
+    page; nation-aware legal text wired into the dashboard and evidence
+    report (replacing a generic blurb that had drifted into overclaiming
+    a current "Children Not in School" registration duty); "logged
+    {timestamp}" shown per report entry alongside the guardian-chosen
+    date, to visibly separate when an activity happened from when it was
+    recorded (the contemporaneous-record framing the research identifies
+    as the actually persuasive artefact).
 
-**Engagement/retention mechanics baked into the data model, not bolted on:**
-- **Forgiving streaks:** `StreakBadge` counts "days shown up" and does not reset to zero on a single miss (configurable grace); missed days are visually neutral, never red/punitive.
-- **Minimal setup:** onboarding creates 1–3 habits in under a minute with sensible default schedules; no long config wall (research: ADHD users abandon apps at the setup wall).
-- **Quiet hours + snooze that isn't the old ignorable pattern:** snooze reschedules with a *new* time offset and *new* wording rather than the identical ping, so deferring doesn't retrain the tune-out reflex.
-- **Positive, low-friction reinforcement:** immediate visual dopamine hit on check-in (animation/confetti), never a guilt screen.
+## 7. Known limitations / possible next steps
 
-## 6. Security requirements (testable)
-
-- **SR-1 — Secret handling.** `AUTH_SECRET`, auth-provider secret, `DATABASE_URL`, `VAPID_PRIVATE_KEY`, `CRON_SECRET` appear only in server-side modules and Vercel env vars. Grep of the client bundle (`.next/static`) yields none of them. `.env*` is git-ignored; `.env.example` contains placeholders only. **Met** = no secret in client bundle or git history.
-- **SR-2 — Output encoding / XSS.** No `dangerouslySetInnerHTML` anywhere. All user-supplied strings render through React escaping. **Met** = a habit named `<img src=x onerror=alert(1)>` renders as inert text in the today view and in any notification.
-- **SR-3 — Push subscription integrity.** `/api/push/subscribe` requires an authenticated session, validates the subscription shape with zod, and **upserts** on `(user_id, endpoint)`. Subscriptions are never returned to any client. **Met** = a second device create makes at most one new row; endpoint never appears in any GET response.
-- **SR-4 — Authorization on every record.** Every habit/checkin read and write filters by the session-derived `user_id`; `[id]` routes verify ownership before acting. **Met** = user B requesting user A's habit id gets `404`/`403`, not data.
-- **SR-5 — Auth & session.** Auth.js sessions use httpOnly + Secure + SameSite=Lax cookies; no password is ever stored (magic-link or OAuth). All `/api/**` except `/api/auth/**` reject unauthenticated requests. **Met** = calling any protected endpoint with no cookie returns 401.
-- **SR-6 — Input validation.** Every request body/query is parsed by a zod schema before use: habit name (length-capped, control chars stripped), schedule fields (enumerated/bounded), notes (length-capped), timezone (validated IANA string). Invalid input → 400, never a partial write. **Met** = fuzzed/oversized inputs are rejected with 400.
-- **SR-7 — Cron endpoint auth.** `/api/cron/dispatch` requires `Authorization: Bearer <CRON_SECRET>` and rejects all else with 401; the secret is compared with a constant-time check. **Met** = an unauthenticated POST sends zero notifications and returns 401.
-- **SR-8 — Dead-subscription hygiene.** On `404`/`410` from the push service, the subscription row is deleted; sends never retry a dead endpoint. **Met** = a revoked endpoint is gone from the DB after one dispatch cycle.
-- **SR-9 — Rate limiting.** Write endpoints (`checkins`, `habits`, `subscribe`) are rate-limited per user/IP so the API can't be used to flood the DB or push quota. **Met** = exceeding the limit returns 429.
-- **SR-10 — CORS / method hygiene.** API routes are same-origin only (no permissive `Access-Control-Allow-Origin: *`), and each handler accepts only its intended HTTP methods. **Met** = a cross-origin browser POST is blocked; unexpected methods return 405.
-- **SR-11 — Notification content safety.** Titles/bodies sent to `web-push` are plain text, length-capped, and stripped of control characters server-side; no user string is interpreted as HTML or a URL by the service worker except the deep-link path, which is validated against an allowlist of internal routes. **Met** = a crafted habit name cannot inject markup or an external URL into a notification.
-- **SR-12 — Dependency hygiene.** Dependency list is minimal (section 7); `npm audit` shows no high/critical at build; lockfile committed. **Met** = clean audit at ship time.
-- **SR-13 — Transport & headers.** HTTPS enforced (Vercel default); security headers set (`Content-Security-Policy` restricting script sources, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Strict-Transport-Security`). **Met** = headers present on responses; CSP blocks inline/foreign scripts.
-
-## 7. Dependencies
-
-Essentials only:
-- `next`, `react`, `react-dom` — framework + UI.
-- `typescript`, `@types/*` — typing.
-- `next-auth` (Auth.js) — passwordless auth, httpOnly sessions.
-- `drizzle-orm` + `@vercel/postgres` (or `postgres`) + `drizzle-kit` (dev) — typed, parameterised DB access.
-- `web-push` — VAPID push send.
-- `zod` — input validation (SR-6, SR-3, SR-11).
-
-Justified extras:
-- A small rate-limit helper (`@upstash/ratelimit` + Upstash Redis **or** a lightweight in-DB counter) — needed for SR-9; prefer the in-DB counter first to avoid adding a vendor, escalate to Upstash only if load demands.
-- Optionally `tailwindcss` (dev) — styling speed only; not load-bearing.
-
-Explicitly avoided: OneSignal/Firebase SDKs, moment/large date libs (use `Intl`/`Temporal`-style native or `date-fns` only if needed), any UI component mega-kit.
-
-## 8. Deployment steps
-
-1. Push repo to GitHub; import into Vercel (framework auto-detected as Next.js).
-2. Provision **Vercel Postgres**; Vercel injects `DATABASE_URL` automatically.
-3. Generate a **VAPID keypair** locally with `web-push generate-vapid-keys`.
-4. In Vercel **Project → Settings → Environment Variables** (Production + Preview), set: `AUTH_SECRET`, auth provider ID/secret (or email server creds for magic link), `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (a `mailto:` address), and `CRON_SECRET` (a long random value). Expose the public key to the client via `NEXT_PUBLIC_VAPID_PUBLIC_KEY`. No secret is ever placed in code.
-5. ~~Add the schedule in `vercel.json` pointing Vercel Cron at `/api/cron/dispatch`~~ **Deviation (2026-07-06):** Vercel's Hobby plan only permits cron schedules that run once per day, which is too coarse for the every-15-minutes dispatch this design needs. `vercel.json`'s `crons` block was removed and replaced with a **GitHub Actions workflow** (`.github/workflows/dispatch-nudges.yml`) on a `*/15 * * * *` schedule that POSTs to `/api/cron/dispatch` with the same `Authorization: Bearer <CRON_SECRET>` header. The endpoint's auth model (SR-7, constant-time compare) is unchanged — only the caller changed from Vercel Cron to GitHub Actions. Requires two GitHub repo settings: Actions variable `APP_URL` (the deployed URL) and Actions secret `CRON_SECRET` (same value set in Vercel). If upgrading to Vercel Pro later, the `crons` block can be restored and the workflow file removed.
-6. Run Drizzle migrations against the production DB (via a one-off command or a guarded migration route).
-7. Deploy. On the phone, open the site in Safari/Chrome → **Add to Home Screen** (required for iOS push) → grant notification permission → verify a test dispatch arrives.
-8. Confirm HTTPS + security headers (SR-13) on the live domain.
-
-## 9. Build order
-
-1. **Scaffold** Next.js + TS + PWA manifest + service worker skeleton. *(SR-13 headers, SR-1 env wiring via `env.ts`)*
-2. **DB schema + migrations** (`users`, `habits`, `checkins`, `push_subscriptions`, `notification_log`). *(SR-4 shape)*
-3. **Auth** with Auth.js, httpOnly sessions, protect `/api/**`. *(SR-5)*
-4. **Habit CRUD API** with zod validation and user-scoped queries. *(SR-4, SR-6, SR-10)*
-5. **Today view + one-tap check-in** with server-side streak calc. *(SR-2, SR-4)*
-6. **Push subscribe/unsubscribe** endpoints + service-worker `push`/`notificationclick`. *(SR-3, SR-11)*
-7. **Nudge engine** (quiet hours, timezone, timing jitter, rotating implementation-intention message variants, escalation + daily backoff, dedupe via `notification_log`). *(SR-11)*
-8. **Cron dispatch endpoint**, bearer-gated, calling the engine + `web-push`, deleting dead subs. *(SR-7, SR-8)*
-9. **Rate limiting** on write endpoints. *(SR-9)*
-10. **Onboarding (<60s)**, forgiving streak UI, install prompt, quiet-hours settings. *(engagement mechanics)*
-11. **Security pass**: CSP + headers, `npm audit`, client-bundle secret grep, ownership fuzz tests. *(SR-1, SR-2, SR-12, SR-13, and verify SR-4/SR-7)*
-
-## 10. Open risks
-
-**Biggest technical risk: iOS web-push reliability.** Research is clear that iOS push works **only** for home-screen-installed PWAs, has **no background sync**, and subscriptions have been observed to **silently expire after 1–2 weeks**, requiring re-subscribe. For an app whose entire value is *reliable* reminders reaching someone who already tunes out reminders, silent push death is fatal. **Mitigations built in:** detect stale/expired subscriptions on every app open and transparently re-subscribe; surface a gentle "notifications need a tap to re-enable" state; prefer **Declarative Web Push** (Safari 18.4+) which sidesteps the silent-push throttling penalty; and log delivery so we can measure real-world drop-off.
-
-**What would falsify this approach:** if measured push delivery on iOS drops below a usable threshold (e.g. reminders regularly fail to arrive within their window, or re-subscription can't be made reliable), then the PWA notification channel is insufficient and the plan should pivot to a **native (or Capacitor-wrapped) app using APNs/FCM**, or a fallback channel such as scheduled email/SMS. The rest of the architecture (Postgres schema, auth, nudge engine, cron dispatch) is channel-agnostic and would survive that pivot — only the delivery leg changes.
-
----
-
-**Relevant absolute paths (to be created by the builder):**
-- Plan target root: `C:\Users\Amir_\projects\adhd-habit-tracker`
-- Core engine: `C:\Users\Amir_\projects\adhd-habit-tracker\src\lib\nudge-engine.ts`
-- Push send + cleanup: `C:\Users\Amir_\projects\adhd-habit-tracker\src\lib\push.ts`
-- Cron fan-out (bearer-gated): `C:\Users\Amir_\projects\adhd-habit-tracker\src\app\api\cron\dispatch\route.ts`
-- Service worker: `C:\Users\Amir_\projects\adhd-habit-tracker\public\sw.js`
-- Env validation/secret loader: `C:\Users\Amir_\projects\adhd-habit-tracker\src\lib\env.ts`
-- Cron schedule: `C:\Users\Amir_\projects\adhd-habit-tracker\vercel.json`
-
-Sources:
-- [PWA iOS Limitations and Safari Support 2026 (MagicBell)](https://www.magicbell.com/blog/pwa-ios-limitations-safari-support-complete-guide)
-- [The State of Declarative Web Push in 2026 (Aimtell)](https://aimtell.com/blog/state-of-declarative-web-push-2026)
-- [Apple: Sending web push notifications in web apps and browsers](https://developer.apple.com/documentation/usernotifications/sending-web-push-notifications-in-web-apps-and-browsers)
-- [web-push (npm)](https://www.npmjs.com/package/web-push)
-- [Build a push notifications server (web.dev)](https://web.dev/articles/codelab-notifications-push-server)
-- [Implementation Intention and Reminder Effects on Behavior Change (PMC)](https://pmc.ncbi.nlm.nih.gov/articles/PMC5730820/)
-- [ADHD-Friendly Reminders: variable timing and habituation (Recallify)](https://recallify.ai/adhd-friendly-reminders/)
-- [How to Build Habits with ADHD (Habi)](https://habi.app/insights/how-to-build-habits-with-adhd/)
-</content>
-</invoke>
+- Uploaded files aren't scanned for malware, and photos aren't stripped
+  of EXIF metadata (which can include GPS coordinates) before storage.
+  Access is already restricted to the child's own family (T7/T8), so this
+  isn't an exposure to strangers, but if a guardian ever exports/forwards
+  a photo outside the app, any embedded location data travels with it. A
+  follow-up could strip EXIF server-side on upload.
+- No email verification "resend" flow beyond Auth.js's default magic-link
+  expiry/retry.
+- No bulk export beyond the per-child printable report (e.g. a
+  whole-family or whole-term export) — the print report already covers
+  the core "produce evidence for an LA" need, but a CSV/PDF export across
+  children would be a natural follow-up.
+- No child-level access (e.g. an older child logging their own work) —
+  every entry is authored by a guardian (`log_entries.author_user_id`).
+- A guardian who already has a family cannot join a second family via
+  invite (see rejected option in section 3); the invite-accept endpoint
+  fails closed with a clear error in that case rather than silently
+  reassigning anyone.
+- "Remove child" only archives (T5) — there is no UI action yet for a
+  guardian to permanently erase a child's record (GDPR's right to
+  erasure). Archiving was chosen by default to protect against
+  accidental data loss of evidence, but a genuine hard-delete path
+  (distinct from archive, with its own explicit confirmation) would be
+  needed for full erasure-request support and is a natural next step.
+- From the four-nations research (section 1), deliberately not built this
+  pass: SEN/EHC/IDP/statement flags on a child profile; optional
+  curriculum-framework tagging (offered, never mandatory, per the
+  research's explicit warning against "school-at-home" framing);
+  reading/outing logs as distinct tracked entities beyond the existing
+  `activity_type` field; a per-nation "required vs requested" matrix;
+  deadline reminders (Scotland's ~6-week consent-decision guidance,
+  England's 15-day register-response window once commenced — the latter
+  can't be built accurately until commencement regulations exist); and
+  any monetisation/pricing tiers. None of these are hard technical
+  problems — they're scope/priority decisions for the user to make.
+- `LEGAL_CONTENT_LAST_REVIEWED` in `src/lib/legal-content.ts` is a manual
+  date, not a live feed — there's no mechanism yet to flag that content
+  as stale as England/Wales commencement regulations are made. A
+  reasonable follow-up is a periodic reminder (or a routine) to review
+  and bump that date.

@@ -1,90 +1,114 @@
-import { redirect } from 'next/navigation';
-import { and, eq } from 'drizzle-orm';
+import Link from 'next/link';
+import { eq, and } from 'drizzle-orm';
 import { auth, signIn } from '@/lib/auth';
+import { requireSessionFamily } from '@/lib/family';
 import { getDb } from '@/db/client';
-import { habits, checkins, users } from '@/db/schema';
-import { computeStreak } from '@/lib/streak';
-import CheckInButton from '@/components/CheckInButton';
-import StreakBadge from '@/components/StreakBadge';
-import InstallPrompt from '@/components/InstallPrompt';
-import { getPublicEnv } from '@/lib/env';
+import { children as childrenTable, families as familiesTable } from '@/db/schema';
+import { getNationContent } from '@/lib/legal-content';
+import AddChildForm from '@/components/AddChildForm';
 
-export default async function TodayPage() {
+export default async function DashboardPage() {
   const session = await auth();
 
-  if (!session?.user?.id) {
+  if (!session?.user) {
     return (
       <main className="container">
-        <h1>ADHD Habit Tracker</h1>
-        <p>Sign in to see today&apos;s habits.</p>
-        <form
-          action={async () => {
-            'use server';
-            await signIn('github');
-          }}
-        >
-          <button className="primary-btn" type="submit">
-            Sign in with GitHub
-          </button>
-        </form>
+        <h1>Home Education Log</h1>
+        <p style={{ color: 'var(--text-muted)' }}>
+          Track each child&apos;s subjects and keep a dated record of their learning — for your own peace of
+          mind, and as evidence if your Local Authority asks about your child&apos;s education.
+        </p>
+
+        <section className="card">
+          <h2 style={{ marginTop: 0, fontSize: '1.05rem' }}>Sign in</h2>
+          {process.env.EMAIL_SERVER && process.env.EMAIL_FROM && (
+            <form
+              className="stacked"
+              action={async (formData: FormData) => {
+                'use server';
+                await signIn('nodemailer', formData);
+              }}
+            >
+              <label>
+                Email address
+                <input type="email" name="email" required placeholder="you@example.com" />
+              </label>
+              <button className="primary-btn" type="submit">
+                Send me a sign-in link
+              </button>
+            </form>
+          )}
+          {process.env.AUTH_GITHUB_ID && process.env.AUTH_GITHUB_SECRET && (
+            <form
+              style={{ marginTop: '0.75rem' }}
+              action={async () => {
+                'use server';
+                await signIn('github');
+              }}
+            >
+              <button className="secondary-btn" type="submit">
+                Sign in with GitHub
+              </button>
+            </form>
+          )}
+        </section>
       </main>
     );
   }
 
-  const userId = session.user.id;
-  const db = getDb();
-
-  const [userRow] = await db.select({ timezone: users.timezone }).from(users).where(eq(users.id, userId));
-  const timeZone = userRow?.timezone ?? 'UTC';
-
-  const userHabits = await db
-    .select()
-    .from(habits)
-    .where(and(eq(habits.userId, userId), eq(habits.isArchived, false)));
-
-  if (userHabits.length === 0) {
-    redirect('/onboarding');
+  const familySession = await requireSessionFamily();
+  if (!familySession) {
+    return (
+      <main className="container">
+        <p>Something went wrong loading your account. Please try signing in again.</p>
+      </main>
+    );
   }
 
-  const todayStart = new Date();
-  todayStart.setUTCHours(0, 0, 0, 0);
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(childrenTable)
+    .where(and(eq(childrenTable.familyId, familySession.familyId), eq(childrenTable.isArchived, false)))
+    .orderBy(childrenTable.createdAt);
 
-  const habitCards = await Promise.all(
-    userHabits.map(async (habit) => {
-      const allCheckins = await db
-        .select({ checkedAt: checkins.checkedAt })
-        .from(checkins)
-        .where(and(eq(checkins.habitId, habit.id), eq(checkins.userId, userId)));
-
-      const streak = computeStreak(
-        allCheckins.map((c) => c.checkedAt),
-        timeZone
-      );
-
-      const checkedToday = allCheckins.some((c) => c.checkedAt >= todayStart);
-
-      return { habit, streak, checkedToday };
-    })
-  );
-
-  const { NEXT_PUBLIC_VAPID_PUBLIC_KEY } = getPublicEnv();
+  const [family] = await db
+    .select({ nation: familiesTable.nation })
+    .from(familiesTable)
+    .where(eq(familiesTable.id, familySession.familyId));
 
   return (
     <main className="container">
-      <h1>Today</h1>
-      {habitCards.map(({ habit, streak, checkedToday }) => (
-        <section className="card" key={habit.id} aria-label={habit.name}>
-          <h2 style={{ margin: '0 0 0.25rem', fontSize: '1.05rem' }}>{habit.name}</h2>
-          {habit.cue && (
-            <p style={{ margin: '0 0 0.5rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>{habit.cue}</p>
-          )}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
-            <StreakBadge currentStreak={streak.currentStreak} longestStreak={streak.longestStreak} />
-            <CheckInButton habitId={habit.id} initiallyCheckedToday={checkedToday} />
-          </div>
-        </section>
+      <h1>Children</h1>
+
+      {family?.nation ? (
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+          {getNationContent(family.nation).legalStandard} Full details on each child&apos;s evidence report.
+        </p>
+      ) : (
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+          <Link href="/family">Set your nation</Link> to see the right home-education legal information for
+          where you live — England, Wales, Scotland and Northern Ireland all differ.
+        </p>
+      )}
+
+      {rows.length === 0 && (
+        <p style={{ color: 'var(--text-muted)' }}>
+          Add your first child&apos;s profile to start logging subjects and evidence.
+        </p>
+      )}
+
+      {rows.map((child) => (
+        <Link key={child.id} href={`/children/${child.id}`} className="card child-card">
+          <h2 style={{ margin: '0 0 0.25rem', fontSize: '1.05rem' }}>{child.name}</h2>
+          {child.yearGroup && <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.85rem' }}>{child.yearGroup}</p>}
+        </Link>
       ))}
-      <InstallPrompt vapidPublicKey={NEXT_PUBLIC_VAPID_PUBLIC_KEY} />
+
+      <section className="card">
+        <h2 style={{ marginTop: 0, fontSize: '1.05rem' }}>Add a child</h2>
+        <AddChildForm />
+      </section>
     </main>
   );
 }
