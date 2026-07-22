@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
+    "db:check": "tsx scripts/check-db.ts",
     "test": "node --conditions react-server --import tsx --test src/__tests__/*.test.ts src/__tests__/*.test.mts"
   },
   "dependencies": {
