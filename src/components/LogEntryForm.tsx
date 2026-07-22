@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import AttachmentUploader from './AttachmentUploader';
+import { ATTACHMENT_ALLOWED_TYPES, uploadAttachment, validateAttachmentFile } from './AttachmentUploader';
 
 interface SubjectOption {
   id: string;
@@ -40,7 +40,36 @@ export default function LogEntryForm({
   const [description, setDescription] = useState('');
   const [activityType, setActivityType] = useState('note');
   const [externalLink, setExternalLink] = useState('');
-  const [savedEntryId, setSavedEntryId] = useState<string | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+
+  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setPhotoFile(null);
+      return;
+    }
+
+    const validationError = validateAttachmentFile(file);
+    if (validationError) {
+      setError(validationError);
+      e.target.value = '';
+      setPhotoFile(null);
+      return;
+    }
+
+    setError(null);
+    setPhotoFile(file);
+  }
+
+  function resetForm() {
+    setTitle('');
+    setDescription('');
+    setExternalLink('');
+    setSubjectId('');
+    setActivityType('note');
+    setEntryDate(today());
+    setPhotoFile(null);
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -67,40 +96,21 @@ export default function LogEntryForm({
         return;
       }
 
-      router.refresh();
+      const { entry } = await res.json();
 
-      if (uploadsEnabled) {
-        const { entry } = await res.json();
-        setSavedEntryId(entry.id);
-      } else {
-        finishEntry();
+      if (photoFile) {
+        const result = await uploadAttachment(photoFile, entry.id);
+        if (!result.ok) {
+          setError(`Entry saved, but the photo failed to upload: ${result.error}`);
+          resetForm();
+          router.refresh();
+          return;
+        }
       }
+
+      resetForm();
+      router.refresh();
     });
-  }
-
-  function finishEntry() {
-    setSavedEntryId(null);
-    setTitle('');
-    setDescription('');
-    setExternalLink('');
-    setSubjectId('');
-    setActivityType('note');
-    setEntryDate(today());
-    router.refresh();
-  }
-
-  if (savedEntryId) {
-    return (
-      <div className="stacked">
-        <p className="form-saved-note">
-          &quot;{title}&quot; saved. Attach a photo now, or come back to it later from the entry below.
-        </p>
-        <AttachmentUploader logEntryId={savedEntryId} />
-        <button className="secondary-btn" type="button" onClick={finishEntry}>
-          Done
-        </button>
-      </div>
-    );
   }
 
   return (
@@ -151,6 +161,13 @@ export default function LogEntryForm({
           />
         </label>
       </div>
+      {uploadsEnabled && (
+        <label>
+          Photo (optional)
+          <input type="file" accept={ATTACHMENT_ALLOWED_TYPES.join(',')} onChange={handlePhotoChange} disabled={isPending} />
+          {photoFile && <span className="form-photo-selected">{photoFile.name} selected</span>}
+        </label>
+      )}
       {error && <p className="form-error">{error}</p>}
       <button className="primary-btn" type="submit" disabled={isPending}>
         {isPending ? 'Saving…' : 'Add entry'}
