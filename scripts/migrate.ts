@@ -14,7 +14,9 @@ async function main() {
     process.exit(1);
   }
 
-  const sql = postgres(connectionString, { max: 1 });
+  // prepare: false — see src/db/client.ts for why (Neon's pooled connection
+  // string doesn't reliably support session-level prepared statements).
+  const sql = postgres(connectionString, { max: 1, prepare: false });
   const db = drizzle(sql);
 
   console.log('Running migrations...');

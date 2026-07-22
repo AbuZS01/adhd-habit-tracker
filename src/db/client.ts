@@ -28,6 +28,15 @@ export function getDb() {
     max: 5,
     idle_timeout: 20,
     connect_timeout: 10,
+    // Neon (and most managed Postgres providers) hand out a *pooled*
+    // connection string that routes through PgBouncer in transaction
+    // mode. Transaction-mode pooling doesn't reliably support
+    // session-level prepared statements — postgres.js uses them by
+    // default — which causes the exact same query to intermittently
+    // fail with "Failed query" depending on which backend connection a
+    // request lands on. Disabling prepared statements is the documented
+    // fix and has no meaningful downside for this app's query patterns.
+    prepare: false,
   });
   dbInstance = drizzle(queryClient, { schema });
   return dbInstance;
