@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import AttachmentUploader from './AttachmentUploader';
 
 interface SubjectOption {
   id: string;
@@ -21,7 +22,15 @@ function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-export default function LogEntryForm({ childId, subjects }: { childId: string; subjects: SubjectOption[] }) {
+export default function LogEntryForm({
+  childId,
+  subjects,
+  uploadsEnabled,
+}: {
+  childId: string;
+  subjects: SubjectOption[];
+  uploadsEnabled: boolean;
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -31,6 +40,7 @@ export default function LogEntryForm({ childId, subjects }: { childId: string; s
   const [description, setDescription] = useState('');
   const [activityType, setActivityType] = useState('note');
   const [externalLink, setExternalLink] = useState('');
+  const [savedEntryId, setSavedEntryId] = useState<string | null>(null);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -57,11 +67,40 @@ export default function LogEntryForm({ childId, subjects }: { childId: string; s
         return;
       }
 
-      setTitle('');
-      setDescription('');
-      setExternalLink('');
       router.refresh();
+
+      if (uploadsEnabled) {
+        const { entry } = await res.json();
+        setSavedEntryId(entry.id);
+      } else {
+        finishEntry();
+      }
     });
+  }
+
+  function finishEntry() {
+    setSavedEntryId(null);
+    setTitle('');
+    setDescription('');
+    setExternalLink('');
+    setSubjectId('');
+    setActivityType('note');
+    setEntryDate(today());
+    router.refresh();
+  }
+
+  if (savedEntryId) {
+    return (
+      <div className="stacked">
+        <p className="form-saved-note">
+          &quot;{title}&quot; saved. Attach a photo now, or come back to it later from the entry below.
+        </p>
+        <AttachmentUploader logEntryId={savedEntryId} />
+        <button className="secondary-btn" type="button" onClick={finishEntry}>
+          Done
+        </button>
+      </div>
+    );
   }
 
   return (

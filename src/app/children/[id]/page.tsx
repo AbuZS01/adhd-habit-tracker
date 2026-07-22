@@ -88,7 +88,11 @@ export default async function ChildPage({ params }: { params: Promise<{ id: stri
 
       <section className="card no-print">
         <h2 style={{ marginTop: 0, fontSize: '1.05rem' }}>Add a log entry</h2>
-        <LogEntryForm childId={childId} subjects={subjects.map((s) => ({ id: s.id, name: s.name }))} />
+        <LogEntryForm
+          childId={childId}
+          subjects={subjects.map((s) => ({ id: s.id, name: s.name }))}
+          uploadsEnabled={uploadsEnabled}
+        />
       </section>
 
       <ManageSubjects childId={childId} subjects={subjects.map((s) => ({ id: s.id, name: s.name }))} />
