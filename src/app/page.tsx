@@ -1,11 +1,15 @@
 import Link from 'next/link';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray, count, countDistinct, max } from 'drizzle-orm';
 import { auth, signIn } from '@/lib/auth';
 import { requireSessionFamily } from '@/lib/family';
 import { getDb } from '@/db/client';
-import { children as childrenTable, families as familiesTable } from '@/db/schema';
+import { children as childrenTable, families as familiesTable, logEntries } from '@/db/schema';
 import { getNationContent } from '@/lib/legal-content';
-import AddChildForm from '@/components/AddChildForm';
+import { computeRecency } from '@/lib/recency';
+import AddChildDrawer from '@/components/AddChildDrawer';
+
+const RING_RADIUS = 17;
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -66,7 +70,7 @@ export default async function DashboardPage() {
   }
 
   const db = getDb();
-  const rows = await db
+  const childRows = await db
     .select()
     .from(childrenTable)
     .where(and(eq(childrenTable.familyId, familySession.familyId), eq(childrenTable.isArchived, false)))
@@ -77,38 +81,97 @@ export default async function DashboardPage() {
     .from(familiesTable)
     .where(eq(familiesTable.id, familySession.familyId));
 
+  const childIds = childRows.map((c) => c.id);
+  const statRows = childIds.length
+    ? await db
+        .select({
+          childId: logEntries.childId,
+          entryCount: count(logEntries.id),
+          subjectCount: countDistinct(logEntries.subjectId),
+          lastEntryDate: max(logEntries.entryDate),
+        })
+        .from(logEntries)
+        .where(inArray(logEntries.childId, childIds))
+        .groupBy(logEntries.childId)
+    : [];
+  const statsByChild = new Map(statRows.map((s) => [s.childId, s]));
+
   return (
     <main className="container">
-      <h1>Children</h1>
+      <div className="page-header">
+        <div>
+          <h1 style={{ marginBottom: '0.25rem' }}>Children</h1>
+          {family?.nation ? (
+            <p className="page-sub">
+              {getNationContent(family.nation).legalStandard} Full details on each child&apos;s evidence report.
+            </p>
+          ) : (
+            <p className="page-sub">
+              <Link href="/family">Set your nation</Link> to see the right home-education legal information for
+              where you live.
+            </p>
+          )}
+        </div>
+        <AddChildDrawer />
+      </div>
 
-      {family?.nation ? (
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-          {getNationContent(family.nation).legalStandard} Full details on each child&apos;s evidence report.
-        </p>
-      ) : (
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-          <Link href="/family">Set your nation</Link> to see the right home-education legal information for
-          where you live — England, Wales, Scotland and Northern Ireland all differ.
-        </p>
-      )}
-
-      {rows.length === 0 && (
+      {childRows.length === 0 && (
         <p style={{ color: 'var(--text-muted)' }}>
           Add your first child&apos;s profile to start logging subjects and evidence.
         </p>
       )}
 
-      {rows.map((child) => (
-        <Link key={child.id} href={`/children/${child.id}`} className="card child-card">
-          <h2 style={{ margin: '0 0 0.25rem', fontSize: '1.05rem' }}>{child.name}</h2>
-          {child.yearGroup && <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.85rem' }}>{child.yearGroup}</p>}
-        </Link>
-      ))}
+      <div className="grid">
+        {childRows.map((child) => {
+          const stats = statsByChild.get(child.id);
+          const entryCount = stats?.entryCount ?? 0;
+          const subjectCount = stats?.subjectCount ?? 0;
+          const recency = computeRecency(stats?.lastEntryDate ?? null);
+          const dashOffset = RING_CIRCUMFERENCE * (1 - recency.ringPercent / 100);
 
-      <section className="card">
-        <h2 style={{ marginTop: 0, fontSize: '1.05rem' }}>Add a child</h2>
-        <AddChildForm />
-      </section>
+          return (
+            <Link key={child.id} href={`/children/${child.id}`} className="card card-b">
+              <div className="ring">
+                <svg viewBox="0 0 40 40" width="54" height="54">
+                  <circle className="ring-track" cx="20" cy="20" r={RING_RADIUS} fill="none" strokeWidth="4" />
+                  {recency.ringPercent > 0 && (
+                    <circle
+                      cx="20"
+                      cy="20"
+                      r={RING_RADIUS}
+                      fill="none"
+                      className={`ring-fill ring-${recency.tier}`}
+                      strokeWidth="4"
+                      strokeLinecap="round"
+                      strokeDasharray={RING_CIRCUMFERENCE}
+                      strokeDashoffset={dashOffset}
+                    />
+                  )}
+                </svg>
+                <span className={entryCount === 0 ? 'ring-number muted' : 'ring-number'}>{entryCount}</span>
+              </div>
+              <div className="card-b-body">
+                <div className="card-b-row">
+                  <div>
+                    <p className="card-name">{child.name}</p>
+                    {child.yearGroup && <p className="card-year">{child.yearGroup}</p>}
+                  </div>
+                  <span className="chevron" aria-hidden="true">
+                    ›
+                  </span>
+                </div>
+                <p className="b-sub">
+                  {subjectCount === 0 ? 'No subjects logged yet' : `${subjectCount} subject${subjectCount === 1 ? '' : 's'} logged`}
+                </p>
+                <div className="b-recency">
+                  <span className={`dot ${recency.tier === 'none' ? 'stale' : recency.tier}`} />
+                  {recency.label}
+                </div>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
     </main>
   );
 }

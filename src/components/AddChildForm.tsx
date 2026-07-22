@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 
-export default function AddChildForm() {
+export default function AddChildForm({ onSuccess }: { onSuccess?: () => void }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +33,7 @@ export default function AddChildForm() {
       setName('');
       setYearGroup('');
       router.refresh();
+      onSuccess?.();
     });
   }
 
