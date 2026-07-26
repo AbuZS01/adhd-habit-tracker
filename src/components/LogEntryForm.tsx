@@ -1,8 +1,14 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { ATTACHMENT_ALLOWED_TYPES, uploadAttachment, validateAttachmentFile } from './AttachmentUploader';
+import {
+  createSpeechRecognition,
+  extractFinalTranscript,
+  isSpeechRecognitionSupported,
+  type SpeechRecognitionInstance,
+} from '@/lib/speechRecognition';
 
 interface SubjectOption {
   id: string;
@@ -41,6 +47,38 @@ export default function LogEntryForm({
   const [activityType, setActivityType] = useState('note');
   const [externalLink, setExternalLink] = useState('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [speechSupported, setSpeechSupported] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
+
+  useEffect(() => {
+    setSpeechSupported(isSpeechRecognitionSupported());
+    return () => {
+      recognitionRef.current?.stop();
+    };
+  }, []);
+
+  function toggleDictation() {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+
+    const recognition = createSpeechRecognition();
+    if (!recognition) return;
+
+    recognition.onresult = (event) => {
+      const finalText = extractFinalTranscript(event);
+      if (!finalText) return;
+      setDescription((prev) => (prev ? `${prev} ${finalText}` : finalText));
+    };
+    recognition.onerror = () => setIsListening(false);
+    recognition.onend = () => setIsListening(false);
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsListening(true);
+  }
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -137,7 +175,19 @@ export default function LogEntryForm({
         <input value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={140} placeholder="e.g. Fractions worksheet" />
       </label>
       <label>
-        Notes (optional)
+        <span className="label-row">
+          Notes (optional)
+          {speechSupported && (
+            <button
+              type="button"
+              className={`mic-btn${isListening ? ' listening' : ''}`}
+              onClick={toggleDictation}
+              aria-pressed={isListening}
+            >
+              {isListening ? '● Listening… (tap to stop)' : '🎤 Dictate'}
+            </button>
+          )}
+        </span>
         <textarea value={description} onChange={(e) => setDescription(e.target.value)} maxLength={4000} rows={2} />
       </label>
       <div className="form-row">

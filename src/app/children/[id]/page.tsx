@@ -8,6 +8,7 @@ import LogEntryForm from '@/components/LogEntryForm';
 import LogEntryItem from '@/components/LogEntryItem';
 import ManageSubjects from '@/components/ManageSubjects';
 import EditChildForm from '@/components/EditChildForm';
+import { computeRecency } from '@/lib/recency';
 
 export default async function ChildPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: childId } = await params;
@@ -81,9 +82,14 @@ export default async function ChildPage({ params }: { params: Promise<{ id: stri
             }}
           />
         </div>
-        <Link href={`/children/${childId}/report`} className="secondary-btn no-print">
-          Evidence report
-        </Link>
+        <div className="page-header-actions no-print">
+          <Link href={`/children/${childId}/progress`} className="secondary-btn">
+            Progress
+          </Link>
+          <Link href={`/children/${childId}/report`} className="secondary-btn">
+            Evidence report
+          </Link>
+        </div>
       </div>
 
       <section className="card no-print">
@@ -99,9 +105,16 @@ export default async function ChildPage({ params }: { params: Promise<{ id: stri
 
       {subjects.map((subject) => {
         const subjectEntries = entriesBySubject.get(subject.id) ?? [];
+        const recency = computeRecency(subjectEntries[0]?.entryDate ?? null);
         return (
           <section className="card subject-section" key={subject.id}>
-            <h2 style={{ marginTop: 0, fontSize: '1.05rem' }}>{subject.name}</h2>
+            <div className="subject-header">
+              <h2 style={{ margin: 0, fontSize: '1.05rem' }}>{subject.name}</h2>
+              <div className="subject-header-meta">
+                <span className={`dot ${recency.tier === 'none' ? 'stale' : recency.tier}`} />
+                {subjectEntries.length} {subjectEntries.length === 1 ? 'entry' : 'entries'}
+              </div>
+            </div>
             {subjectEntries.length === 0 ? (
               <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No entries logged yet.</p>
             ) : (

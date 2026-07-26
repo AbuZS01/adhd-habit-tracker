@@ -328,6 +328,129 @@ button {
   margin-bottom: 1rem;
 }
 
+.page-header-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.subject-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.subject-header-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.progress-summary {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.coverage-ring {
+  width: 96px;
+  height: 96px;
+  flex-shrink: 0;
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.coverage-ring svg {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-90deg);
+}
+
+.coverage-ring-number {
+  position: relative;
+  font-size: 1.3rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.progress-summary-lists {
+  display: flex;
+  gap: 2.5rem;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.progress-summary-lists h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.progress-subject-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.progress-subject-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.heatmap-scroll {
+  overflow-x: auto;
+}
+
+.heatmap {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.heatmap th,
+.heatmap td {
+  padding: 0.3rem 0.5rem;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.heatmap th[scope='row'] {
+  text-align: left;
+  white-space: nowrap;
+  padding-right: 1rem;
+}
+
+.heat-cell {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  background: var(--bg-elevated-2);
+}
+
+.heat-cell.heat-1 {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+}
+
+.heat-cell.heat-2 {
+  background: var(--accent);
+}
+
 form.stacked {
   display: flex;
   flex-direction: column;
@@ -410,6 +533,36 @@ textarea {
 .form-photo-selected {
   font-size: 0.8rem;
   color: var(--text-muted);
+}
+
+.label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.mic-btn {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated-2);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.mic-btn:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.mic-btn.listening {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: rgba(248, 113, 113, 0.1);
 }
 
 .subject-section {
