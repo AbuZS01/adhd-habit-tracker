@@ -77,9 +77,6 @@ export default async function PlannerPage({
           <h1 style={{ marginBottom: 0 }}>{child.name}&apos;s planner</h1>
           <p className="page-sub">Plan which subjects to cover each day; entries you log automatically mark a plan as done.</p>
         </div>
-        <Link href={`/children/${childId}`} className="secondary-btn no-print">
-          Back to profile
-        </Link>
       </div>
 
       <div className="planner-week-nav no-print">

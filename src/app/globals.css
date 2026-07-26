@@ -120,6 +120,22 @@ button {
   flex-shrink: 0;
 }
 
+.sidebar-child-section {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.sidebar-child-name {
+  margin: 0 0 0.4rem;
+  padding: 0 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
 .sidebar-footer {
   margin-top: auto;
   padding-top: 1rem;
@@ -996,6 +1012,24 @@ textarea:focus {
   }
 
   .sidebar-nav {
+    flex-direction: row;
+  }
+
+  .sidebar-child-section {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .sidebar-child-name {
+    padding: 0;
+    white-space: nowrap;
+  }
+
+  .sidebar-child-section .sidebar-nav {
     flex-direction: row;
   }
 

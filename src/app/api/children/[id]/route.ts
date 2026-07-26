@@ -16,6 +16,19 @@ async function loadOwnedChild(familyId: string, childId: string) {
   return row ?? null;
 }
 
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await requireFamily();
+  if (!session) return unauthorizedResponse();
+
+  const { id } = await params;
+  if (!idParamSchema.safeParse(id).success) return notFoundResponse();
+
+  const existing = await loadOwnedChild(session.familyId, id);
+  if (!existing) return notFoundResponse();
+
+  return NextResponse.json({ child: { id: existing.id, name: existing.name } });
+}
+
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireFamily();
   if (!session) return unauthorizedResponse();

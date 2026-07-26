@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { eq, and, gte } from 'drizzle-orm';
 import { requireSessionFamily } from '@/lib/family';
@@ -57,9 +56,6 @@ export default async function ChildProgressPage({ params }: { params: Promise<{ 
           <h1 style={{ marginBottom: 0 }}>{child.name}&apos;s progress</h1>
           <p className="page-sub">Subject coverage over the last {COVERAGE_WINDOW_DAYS} days, from your own log entries.</p>
         </div>
-        <Link href={`/children/${childId}`} className="secondary-btn no-print">
-          Back to profile
-        </Link>
       </div>
 
       {subjects.length === 0 ? (

@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { eq, and, inArray } from 'drizzle-orm';
 import { requireSessionFamily } from '@/lib/family';
@@ -81,17 +80,6 @@ export default async function ChildPage({ params }: { params: Promise<{ id: stri
               notes: child.notes,
             }}
           />
-        </div>
-        <div className="page-header-actions no-print">
-          <Link href={`/children/${childId}/planner`} className="secondary-btn">
-            Planner
-          </Link>
-          <Link href={`/children/${childId}/progress`} className="secondary-btn">
-            Progress
-          </Link>
-          <Link href={`/children/${childId}/report`} className="secondary-btn">
-            Evidence report
-          </Link>
         </div>
       </div>
 
