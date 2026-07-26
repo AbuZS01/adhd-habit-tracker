@@ -143,6 +143,18 @@ export const listEntriesQuerySchema = z.object({
   to: isoDateSchema({ allowFuture: true }).optional(),
 });
 
+// Plans are forward-looking, so — unlike entryDateSchema — a future date is
+// the normal case, not an error.
+export const plannedDateSchema = isoDateSchema({ allowFuture: true });
+export const plannedTitleSchema = optionalTrimmedText(140);
+
+export const createPlannedActivitySchema = z.object({
+  childId: z.string().uuid(),
+  subjectId: z.string().uuid().nullable().optional(),
+  plannedDate: plannedDateSchema,
+  title: plannedTitleSchema,
+});
+
 // Kept in sync with the constraints passed to `onBeforeGenerateToken` in
 // src/app/api/attachments/upload/route.ts (that's the actual enforcement
 // point at upload time) — this copy validates the confirm-attachment

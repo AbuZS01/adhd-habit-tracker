@@ -60,4 +60,5 @@ export const RATE_LIMITS = {
   entriesWrite: { limit: 60, windowMs: 60_000 }, // 60/min per user
   inviteCreate: { limit: 5, windowMs: 60_000 }, // 5/min per user
   attachmentsWrite: { limit: 30, windowMs: 60_000 }, // 30/min per user — covers upload-token issuance too
+  plannerWrite: { limit: 60, windowMs: 60_000 }, // 60/min per user
 } as const;

@@ -208,6 +208,27 @@ export const attachments = pgTable('attachments', {
   logEntryIdx: index('attachments_log_entry_idx').on(table.logEntryId),
 }));
 
+/**
+ * planned_activities — a forward-looking plan (intended, not yet done),
+ * distinct from log_entries (what actually happened). "Completed" is never
+ * stored here directly — it's derived by checking whether a matching
+ * log_entries row exists for the same child/subject/date, so plan and
+ * evidence can never drift out of sync with each other.
+ */
+export const plannedActivities = pgTable('planned_activities', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  childId: uuid('child_id').notNull().references(() => children.id, { onDelete: 'cascade' }),
+  // Nullable for a general/cross-curricular plan, same convention as log_entries.
+  subjectId: uuid('subject_id').references(() => subjects.id, { onDelete: 'set null' }),
+  plannedDate: date('planned_date', { mode: 'string' }).notNull(),
+  title: text('title'),
+  createdByUserId: uuid('created_by_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  childIdx: index('planned_activities_child_idx').on(table.childId),
+  dateIdx: index('planned_activities_date_idx').on(table.plannedDate),
+}));
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Family = typeof families.$inferSelect;
@@ -224,3 +245,5 @@ export type LogEntry = typeof logEntries.$inferSelect;
 export type NewLogEntry = typeof logEntries.$inferInsert;
 export type Attachment = typeof attachments.$inferSelect;
 export type NewAttachment = typeof attachments.$inferInsert;
+export type PlannedActivity = typeof plannedActivities.$inferSelect;
+export type NewPlannedActivity = typeof plannedActivities.$inferInsert;
