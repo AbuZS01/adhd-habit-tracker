@@ -7,6 +7,7 @@ import { children as childrenTable, families as familiesTable, logEntries } from
 import { getNationContent } from '@/lib/legal-content';
 import { computeRecency } from '@/lib/recency';
 import AddChildDrawer from '@/components/AddChildDrawer';
+import QuickNoteCard from '@/components/QuickNoteCard';
 
 const RING_RADIUS = 17;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
@@ -115,10 +116,12 @@ export default async function DashboardPage() {
         <AddChildDrawer />
       </div>
 
-      {childRows.length === 0 && (
+      {childRows.length === 0 ? (
         <p style={{ color: 'var(--text-muted)' }}>
           Add your first child&apos;s profile to start logging subjects and evidence.
         </p>
+      ) : (
+        <QuickNoteCard childOptions={childRows.map((c) => ({ id: c.id, name: c.name }))} />
       )}
 
       <div className="grid">

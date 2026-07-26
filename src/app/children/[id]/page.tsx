@@ -83,6 +83,9 @@ export default async function ChildPage({ params }: { params: Promise<{ id: stri
           />
         </div>
         <div className="page-header-actions no-print">
+          <Link href={`/children/${childId}/planner`} className="secondary-btn">
+            Planner
+          </Link>
           <Link href={`/children/${childId}/progress`} className="secondary-btn">
             Progress
           </Link>

@@ -451,6 +451,82 @@ button {
   background: var(--accent);
 }
 
+.planner-week-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.planner-day h2 {
+  margin-bottom: 0.75rem;
+}
+
+.planner-item-list {
+  list-style: none;
+  margin: 0 0 0.85rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.planner-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.9rem;
+}
+
+.planner-status {
+  flex-shrink: 0;
+  width: 1.2rem;
+  text-align: center;
+  font-weight: 700;
+}
+
+.planner-status.done {
+  color: var(--good);
+}
+
+.planner-status.pending {
+  color: var(--text-muted);
+}
+
+.planner-item-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.planner-item-badge {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.planner-item-badge.done {
+  color: var(--good);
+  background: rgba(74, 222, 128, 0.12);
+}
+
+.planner-item-badge.pending {
+  color: var(--text-muted);
+  background: var(--bg-elevated-2);
+}
+
+.planner-add-form select {
+  flex: 0 0 auto;
+  min-width: 160px;
+}
+
+.quick-note .form-row {
+  align-items: stretch;
+}
+
 form.stacked {
   display: flex;
   flex-direction: column;

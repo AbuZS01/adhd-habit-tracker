@@ -29,6 +29,13 @@
       "when": 1784638143397,
       "tag": "0003_silly_blazing_skull",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1785093127323,
+      "tag": "0004_early_scrambler",
+      "breakpoints": true
     }
   ]
 }
