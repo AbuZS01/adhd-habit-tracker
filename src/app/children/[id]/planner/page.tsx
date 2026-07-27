@@ -6,6 +6,7 @@ import { getDb } from '@/db/client';
 import { children as childrenTable, subjects as subjectsTable, logEntries, plannedActivities } from '@/db/schema';
 import { startOfWeek, weekDates, addDaysIso, withCompletionStatus } from '@/lib/planner';
 import PlannerDay from '@/components/PlannerDay';
+import PlannerWeekGrid from '@/components/PlannerWeekGrid';
 
 function isValidIsoDate(value: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
@@ -68,7 +69,19 @@ export default async function PlannerPage({
   const subjectNameById = new Map(subjects.map((s) => [s.id, s.name]));
   const prevWeek = addDaysIso(weekStart, -7);
   const nextWeek = addDaysIso(weekStart, 7);
+  const todayIso = new Date().toISOString().slice(0, 10);
   const isCurrentWeek = weekStart === startOfWeek(new Date());
+
+  const gridDays = days.map((day) => ({
+    date: day.date,
+    label: day.label,
+    dayNumber: new Date(`${day.date}T00:00:00Z`).getUTCDate().toString(),
+    isToday: day.date === todayIso,
+    items: (plannedByDate.get(day.date) ?? []).map((p) => ({
+      subjectName: p.subjectId ? subjectNameById.get(p.subjectId) ?? 'Subject' : null,
+      completed: p.completed,
+    })),
+  }));
 
   return (
     <main className="container">
@@ -94,19 +107,22 @@ export default async function PlannerPage({
       {subjects.length === 0 ? (
         <p style={{ color: 'var(--text-muted)' }}>Add a subject on the child&apos;s profile to start planning.</p>
       ) : (
-        days.map((day) => (
-          <PlannerDay
-            key={day.date}
-            childId={childId}
-            date={day.date}
-            label={day.label}
-            subjects={subjects}
-            items={(plannedByDate.get(day.date) ?? []).map((p) => ({
-              ...p,
-              subjectName: p.subjectId ? subjectNameById.get(p.subjectId) ?? 'Subject' : null,
-            }))}
-          />
-        ))
+        <>
+          <PlannerWeekGrid days={gridDays} />
+          {days.map((day) => (
+            <PlannerDay
+              key={day.date}
+              childId={childId}
+              date={day.date}
+              label={day.label}
+              subjects={subjects}
+              items={(plannedByDate.get(day.date) ?? []).map((p) => ({
+                ...p,
+                subjectName: p.subjectId ? subjectNameById.get(p.subjectId) ?? 'Subject' : null,
+              }))}
+            />
+          ))}
+        </>
       )}
     </main>
   );

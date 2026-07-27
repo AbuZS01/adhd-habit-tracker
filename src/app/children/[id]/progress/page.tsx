@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { notFound, redirect } from 'next/navigation';
 import { eq, and, gte } from 'drizzle-orm';
 import { requireSessionFamily } from '@/lib/family';
@@ -112,32 +113,26 @@ export default async function ChildProgressPage({ params }: { params: Promise<{ 
 
           <section className="card">
             <h2 style={{ marginTop: 0, fontSize: '1.05rem' }}>Last {HEATMAP_DAYS} days</h2>
-            <div className="heatmap-scroll">
-              <table className="heatmap">
-                <thead>
-                  <tr>
-                    <th />
-                    {heatmapRows[0]?.days.map((d) => (
-                      <th key={d.date}>{d.label}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {heatmapRows.map((row) => (
-                    <tr key={row.subjectId}>
-                      <th scope="row">{row.name}</th>
-                      {row.days.map((d) => (
-                        <td key={d.date}>
-                          <span
-                            className={`heat-cell ${heatIntensityClass(d.count)}`}
-                            title={`${row.name}, ${d.date}: ${d.count} ${d.count === 1 ? 'entry' : 'entries'}`}
-                          />
-                        </td>
-                      ))}
-                    </tr>
+            <div className="heatmap-grid" style={{ gridTemplateColumns: `minmax(72px, auto) repeat(${HEATMAP_DAYS}, 1fr)` }}>
+              <span />
+              {heatmapRows[0]?.days.map((d) => (
+                <span key={d.date} className="heatmap-col-label">
+                  {d.label}
+                </span>
+              ))}
+              {heatmapRows.map((row) => (
+                <Fragment key={row.subjectId}>
+                  <span className="heatmap-row-label">{row.name}</span>
+                  {row.days.map((d) => (
+                    <span key={d.date} className="heatmap-cell-wrap">
+                      <span
+                        className={`heat-cell ${heatIntensityClass(d.count)}`}
+                        title={`${row.name}, ${d.date}: ${d.count} ${d.count === 1 ? 'entry' : 'entries'}`}
+                      />
+                    </span>
                   ))}
-                </tbody>
-              </table>
+                </Fragment>
+              ))}
             </div>
           </section>
         </>

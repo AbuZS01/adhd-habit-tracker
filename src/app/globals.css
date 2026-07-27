@@ -534,34 +534,37 @@ button {
   gap: 0.5rem;
 }
 
-.heatmap-scroll {
-  overflow-x: auto;
-}
-
-.heatmap {
-  border-collapse: collapse;
+.heatmap-grid {
+  display: grid;
+  gap: 0.4rem 0.3rem;
+  align-items: center;
   width: 100%;
 }
 
-.heatmap th,
-.heatmap td {
-  padding: 0.3rem 0.5rem;
+.heatmap-col-label {
   text-align: center;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   color: var(--text-muted);
-  font-weight: 400;
 }
 
-.heatmap th[scope='row'] {
-  text-align: left;
+.heatmap-row-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
   white-space: nowrap;
-  padding-right: 1rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.heatmap-cell-wrap {
+  display: flex;
+  justify-content: center;
 }
 
 .heat-cell {
   display: inline-block;
-  width: 20px;
-  height: 20px;
+  width: 100%;
+  max-width: 22px;
+  aspect-ratio: 1;
   border-radius: 5px;
   background: var(--bg-elevated-2);
 }
@@ -582,6 +585,75 @@ button {
   gap: 0.75rem;
   margin-bottom: 1rem;
   flex-wrap: wrap;
+}
+
+.planner-week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.4rem;
+  padding: 0.85rem 0.5rem;
+}
+
+.planner-grid-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.25rem;
+  border-radius: 10px;
+  text-decoration: none;
+  color: var(--text);
+  min-width: 0;
+}
+
+.planner-grid-day:hover {
+  background: var(--bg-elevated-2);
+}
+
+.planner-grid-day.today {
+  background: var(--accent-soft);
+}
+
+.planner-grid-day-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.2;
+}
+
+.planner-grid-day-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.planner-grid-day-number {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.planner-grid-dots {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.2rem;
+  min-height: 8px;
+}
+
+.planner-grid-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.planner-grid-dot.done {
+  background: var(--good);
+}
+
+.planner-grid-dot.pending {
+  background: var(--stale);
 }
 
 .planner-day h2 {
