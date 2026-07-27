@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { ATTACHMENT_ALLOWED_TYPES, uploadAttachment, validateAttachmentFile } from './AttachmentUploader';
+import { EvidenceButtons, uploadAttachment, type EvidenceKind } from './AttachmentUploader';
 import {
   createSpeechRecognition,
   extractFinalTranscript,
@@ -46,7 +46,7 @@ export default function LogEntryForm({
   const [description, setDescription] = useState('');
   const [activityType, setActivityType] = useState('note');
   const [externalLink, setExternalLink] = useState('');
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [stagedFile, setStagedFile] = useState<{ file: File; kind: EvidenceKind } | null>(null);
   const [speechSupported, setSpeechSupported] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
@@ -80,25 +80,6 @@ export default function LogEntryForm({
     setIsListening(true);
   }
 
-  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) {
-      setPhotoFile(null);
-      return;
-    }
-
-    const validationError = validateAttachmentFile(file);
-    if (validationError) {
-      setError(validationError);
-      e.target.value = '';
-      setPhotoFile(null);
-      return;
-    }
-
-    setError(null);
-    setPhotoFile(file);
-  }
-
   function resetForm() {
     setTitle('');
     setDescription('');
@@ -106,7 +87,7 @@ export default function LogEntryForm({
     setSubjectId('');
     setActivityType('note');
     setEntryDate(today());
-    setPhotoFile(null);
+    setStagedFile(null);
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -136,10 +117,10 @@ export default function LogEntryForm({
 
       const { entry } = await res.json();
 
-      if (photoFile) {
-        const result = await uploadAttachment(photoFile, entry.id);
+      if (stagedFile) {
+        const result = await uploadAttachment(stagedFile.file, entry.id, stagedFile.kind);
         if (!result.ok) {
-          setError(`Entry saved, but the photo failed to upload: ${result.error}`);
+          setError(`Entry saved, but the ${stagedFile.kind} failed to upload: ${result.error}`);
           resetForm();
           router.refresh();
           return;
@@ -153,6 +134,12 @@ export default function LogEntryForm({
 
   return (
     <form className="stacked" onSubmit={handleSubmit}>
+      {uploadsEnabled && (
+        <div>
+          <EvidenceButtons onFileSelected={(file, kind) => setStagedFile({ file, kind })} disabled={isPending} />
+          {stagedFile && <p className="form-photo-selected">{stagedFile.file.name} selected</p>}
+        </div>
+      )}
       <div className="form-row">
         <label>
           Date
@@ -211,13 +198,6 @@ export default function LogEntryForm({
           />
         </label>
       </div>
-      {uploadsEnabled && (
-        <label>
-          Photo (optional)
-          <input type="file" accept={ATTACHMENT_ALLOWED_TYPES.join(',')} onChange={handlePhotoChange} disabled={isPending} />
-          {photoFile && <span className="form-photo-selected">{photoFile.name} selected</span>}
-        </label>
-      )}
       {error && <p className="form-error">{error}</p>}
       <button className="primary-btn" type="submit" disabled={isPending}>
         {isPending ? 'Saving…' : 'Add entry'}

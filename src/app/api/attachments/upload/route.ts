@@ -4,7 +4,7 @@ import { eq, and } from 'drizzle-orm';
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { requireFamily, unauthorizedResponse, rateLimitedResponse } from '@/lib/api-auth';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
-import { ATTACHMENT_ALLOWED_CONTENT_TYPES, ATTACHMENT_MAX_BYTES, idParamSchema } from '@/lib/validation';
+import { ATTACHMENT_ALLOWED_CONTENT_TYPES, ATTACHMENT_MAX_BYTES, ATTACHMENT_MAX_VIDEO_BYTES, idParamSchema } from '@/lib/validation';
 import { getDb } from '@/db/client';
 import { children, logEntries } from '@/db/schema';
 
@@ -44,8 +44,11 @@ export async function POST(req: NextRequest) {
       request: req,
       onBeforeGenerateToken: async (pathname, clientPayload) => {
         let logEntryId: string | undefined;
+        let kind: string | undefined;
         try {
-          logEntryId = clientPayload ? (JSON.parse(clientPayload) as { logEntryId?: string }).logEntryId : undefined;
+          const parsed = clientPayload ? (JSON.parse(clientPayload) as { logEntryId?: string; kind?: string }) : undefined;
+          logEntryId = parsed?.logEntryId;
+          kind = parsed?.kind;
         } catch {
           logEntryId = undefined;
         }
@@ -64,9 +67,14 @@ export async function POST(req: NextRequest) {
           throw new Error('Invalid pathname');
         }
 
+        // The client's self-declared "kind" only widens the size ceiling for
+        // video — it never changes which content types are accepted, so a
+        // mislabelled kind can't be used to smuggle in a disallowed type.
+        const maximumSizeInBytes = kind === 'video' ? ATTACHMENT_MAX_VIDEO_BYTES : ATTACHMENT_MAX_BYTES;
+
         return {
           allowedContentTypes: [...ATTACHMENT_ALLOWED_CONTENT_TYPES],
-          maximumSizeInBytes: ATTACHMENT_MAX_BYTES,
+          maximumSizeInBytes,
           addRandomSuffix: true,
           tokenPayload: JSON.stringify({ logEntryId, userId: session.userId }),
         };

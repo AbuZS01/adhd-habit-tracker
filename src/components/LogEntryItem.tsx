@@ -51,13 +51,17 @@ function AttachmentThumb({ attachment }: { attachment: AttachmentData }) {
 
   return (
     <div className="attachment-thumb-wrap">
-      <a href={fileUrl} target="_blank" rel="noopener noreferrer">
-        {attachment.contentType.startsWith('image/') ? (
+      {attachment.contentType.startsWith('image/') ? (
+        <a href={fileUrl} target="_blank" rel="noopener noreferrer">
           <img src={fileUrl} alt={attachment.originalName} className="attachment-thumb" loading="lazy" />
-        ) : (
+        </a>
+      ) : attachment.contentType.startsWith('video/') ? (
+        <video src={fileUrl} controls className="attachment-video" preload="metadata" />
+      ) : (
+        <a href={fileUrl} target="_blank" rel="noopener noreferrer">
           <span className="attachment-file-link">📄 {attachment.originalName}</span>
-        )}
-      </a>
+        </a>
+      )}
       <button className="link-btn no-print attachment-remove" onClick={handleDelete} disabled={isPending}>
         Remove
       </button>

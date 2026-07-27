@@ -159,25 +159,43 @@ export const createPlannedActivitySchema = z.object({
 // src/app/api/attachments/upload/route.ts (that's the actual enforcement
 // point at upload time) — this copy validates the confirm-attachment
 // request body after the client-side upload has already completed.
-export const ATTACHMENT_ALLOWED_CONTENT_TYPES = [
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/heic',
-  'image/heif',
+export const ATTACHMENT_PHOTO_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'] as const;
+export const ATTACHMENT_VIDEO_CONTENT_TYPES = ['video/mp4', 'video/quicktime', 'video/webm'] as const;
+export const ATTACHMENT_FILE_CONTENT_TYPES = [
   'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/plain',
 ] as const;
 
-export const ATTACHMENT_MAX_BYTES = 15 * 1024 * 1024; // 15MB — generous for a phone photo, caps abuse.
+export const ATTACHMENT_ALLOWED_CONTENT_TYPES = [
+  ...ATTACHMENT_PHOTO_CONTENT_TYPES,
+  ...ATTACHMENT_VIDEO_CONTENT_TYPES,
+  ...ATTACHMENT_FILE_CONTENT_TYPES,
+] as const;
+
+export const ATTACHMENT_MAX_BYTES = 15 * 1024 * 1024; // 15MB — photos and documents.
+export const ATTACHMENT_MAX_VIDEO_BYTES = 200 * 1024 * 1024; // 200MB — phone video clips are much larger.
 export const ATTACHMENT_MAX_PER_ENTRY = 6;
 
-export const createAttachmentSchema = z.object({
-  logEntryId: z.string().uuid(),
-  pathname: z.string().min(1).max(1024),
-  originalName: trimmedText(255),
-  contentType: z.enum(ATTACHMENT_ALLOWED_CONTENT_TYPES),
-  size: z.number().int().positive().max(ATTACHMENT_MAX_BYTES),
-});
+function maxBytesForContentType(contentType: string): number {
+  return (ATTACHMENT_VIDEO_CONTENT_TYPES as readonly string[]).includes(contentType) ? ATTACHMENT_MAX_VIDEO_BYTES : ATTACHMENT_MAX_BYTES;
+}
+
+export const createAttachmentSchema = z
+  .object({
+    logEntryId: z.string().uuid(),
+    pathname: z.string().min(1).max(1024),
+    originalName: trimmedText(255),
+    contentType: z.enum(ATTACHMENT_ALLOWED_CONTENT_TYPES),
+    size: z.number().int().positive(),
+  })
+  .refine((data) => data.size <= maxBytesForContentType(data.contentType), {
+    message: 'File is too large',
+    path: ['size'],
+  });
 
 export const familyNameSchema = trimmedText(120);
 
