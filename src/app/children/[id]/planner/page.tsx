@@ -4,9 +4,13 @@ import { eq, and, gte, lte } from 'drizzle-orm';
 import { requireSessionFamily } from '@/lib/family';
 import { getDb } from '@/db/client';
 import { children as childrenTable, subjects as subjectsTable, logEntries, plannedActivities } from '@/db/schema';
-import { startOfWeek, weekDates, addDaysIso, withCompletionStatus } from '@/lib/planner';
+import { monthGridDays, monthLabel, currentMonthIso, addMonthsIso, withCompletionStatus } from '@/lib/planner';
 import PlannerDay from '@/components/PlannerDay';
-import PlannerWeekGrid from '@/components/PlannerWeekGrid';
+import PlannerMonthGrid from '@/components/PlannerMonthGrid';
+
+function isValidMonth(value: string): boolean {
+  return /^\d{4}-\d{2}$/.test(value);
+}
 
 function isValidIsoDate(value: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
@@ -17,10 +21,10 @@ export default async function PlannerPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ week?: string }>;
+  searchParams: Promise<{ month?: string; day?: string }>;
 }) {
   const { id: childId } = await params;
-  const { week } = await searchParams;
+  const { month, day } = await searchParams;
   const session = await requireSessionFamily();
   if (!session) redirect('/');
 
@@ -38,9 +42,13 @@ export default async function PlannerPage({
     .where(and(eq(subjectsTable.childId, childId), eq(subjectsTable.isArchived, false)))
     .orderBy(subjectsTable.sortOrder);
 
-  const weekStart = week && isValidIsoDate(week) ? week : startOfWeek(new Date());
-  const days = weekDates(weekStart);
-  const weekEnd = days[6]!.date;
+  const monthIso = month && isValidMonth(month) ? month : currentMonthIso();
+  const gridDays = monthGridDays(monthIso);
+  const gridStart = gridDays[0]!.date;
+  const gridEnd = gridDays[gridDays.length - 1]!.date;
+
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const selectedDay = day && isValidIsoDate(day) ? day : monthIso === currentMonthIso() ? todayIso : `${monthIso}-01`;
 
   const [planned, loggedEntries] = await Promise.all([
     db
@@ -51,11 +59,11 @@ export default async function PlannerPage({
         title: plannedActivities.title,
       })
       .from(plannedActivities)
-      .where(and(eq(plannedActivities.childId, childId), gte(plannedActivities.plannedDate, weekStart), lte(plannedActivities.plannedDate, weekEnd))),
+      .where(and(eq(plannedActivities.childId, childId), gte(plannedActivities.plannedDate, gridStart), lte(plannedActivities.plannedDate, gridEnd))),
     db
       .select({ subjectId: logEntries.subjectId, entryDate: logEntries.entryDate })
       .from(logEntries)
-      .where(and(eq(logEntries.childId, childId), gte(logEntries.entryDate, weekStart), lte(logEntries.entryDate, weekEnd))),
+      .where(and(eq(logEntries.childId, childId), gte(logEntries.entryDate, gridStart), lte(logEntries.entryDate, gridEnd))),
   ]);
 
   const plannedWithStatus = withCompletionStatus(planned, loggedEntries);
@@ -67,21 +75,31 @@ export default async function PlannerPage({
   }
 
   const subjectNameById = new Map(subjects.map((s) => [s.id, s.name]));
-  const prevWeek = addDaysIso(weekStart, -7);
-  const nextWeek = addDaysIso(weekStart, 7);
-  const todayIso = new Date().toISOString().slice(0, 10);
-  const isCurrentWeek = weekStart === startOfWeek(new Date());
+  const subjectIndexById = new Map(subjects.map((s, i) => [s.id, i]));
+  const prevMonth = addMonthsIso(monthIso, -1);
+  const nextMonth = addMonthsIso(monthIso, 1);
 
-  const gridDays = days.map((day) => ({
-    date: day.date,
-    label: day.label,
-    dayNumber: new Date(`${day.date}T00:00:00Z`).getUTCDate().toString(),
-    isToday: day.date === todayIso,
-    items: (plannedByDate.get(day.date) ?? []).map((p) => ({
+  const gridDaysWithChips = gridDays.map((d) => ({
+    date: d.date,
+    dayNumber: d.dayNumber,
+    inMonth: d.inMonth,
+    isToday: d.date === todayIso,
+    isSelected: d.date === selectedDay,
+    items: (plannedByDate.get(d.date) ?? []).map((p) => ({
+      subjectIndex: p.subjectId ? subjectIndexById.get(p.subjectId) ?? 0 : -1,
       subjectName: p.subjectId ? subjectNameById.get(p.subjectId) ?? 'Subject' : null,
       completed: p.completed,
     })),
   }));
+
+  const selectedDayItems = (plannedByDate.get(selectedDay) ?? []).map((p) => ({
+    ...p,
+    subjectName: p.subjectId ? subjectNameById.get(p.subjectId) ?? 'Subject' : null,
+  }));
+  const selectedDayLabel = new Date(`${selectedDay}T00:00:00Z`).toLocaleDateString('en-GB', {
+    weekday: 'long',
+    timeZone: 'UTC',
+  });
 
   return (
     <main className="container">
@@ -92,15 +110,13 @@ export default async function PlannerPage({
         </div>
       </div>
 
-      <div className="planner-week-nav no-print">
-        <Link href={`/children/${childId}/planner?week=${prevWeek}`} className="secondary-btn">
-          ← Previous week
+      <div className="planner-month-nav no-print">
+        <Link href={`/children/${childId}/planner?month=${prevMonth}`} className="secondary-btn" aria-label="Previous month">
+          ←
         </Link>
-        <span className="page-sub" style={{ margin: 0 }}>
-          {isCurrentWeek ? 'This week' : `Week of ${weekStart}`}
-        </span>
-        <Link href={`/children/${childId}/planner?week=${nextWeek}`} className="secondary-btn">
-          Next week →
+        <h2 className="planner-month-label">{monthLabel(monthIso)}</h2>
+        <Link href={`/children/${childId}/planner?month=${nextMonth}`} className="secondary-btn" aria-label="Next month">
+          →
         </Link>
       </div>
 
@@ -108,20 +124,15 @@ export default async function PlannerPage({
         <p style={{ color: 'var(--text-muted)' }}>Add a subject on the child&apos;s profile to start planning.</p>
       ) : (
         <>
-          <PlannerWeekGrid days={gridDays} />
-          {days.map((day) => (
-            <PlannerDay
-              key={day.date}
-              childId={childId}
-              date={day.date}
-              label={day.label}
-              subjects={subjects}
-              items={(plannedByDate.get(day.date) ?? []).map((p) => ({
-                ...p,
-                subjectName: p.subjectId ? subjectNameById.get(p.subjectId) ?? 'Subject' : null,
-              }))}
-            />
-          ))}
+          <PlannerMonthGrid childId={childId} monthIso={monthIso} days={gridDaysWithChips} />
+          <PlannerDay
+            key={selectedDay}
+            childId={childId}
+            date={selectedDay}
+            label={selectedDayLabel}
+            subjects={subjects}
+            items={selectedDayItems}
+          />
         </>
       )}
     </main>

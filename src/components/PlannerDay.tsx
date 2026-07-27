@@ -74,7 +74,7 @@ export default function PlannerDay({
   }
 
   return (
-    <section className="card planner-day" id={`day-${date}`} style={{ scrollMarginTop: '1rem' }}>
+    <section className="card planner-day">
       <h2 style={{ marginTop: 0, fontSize: '1.05rem' }}>{formatDayHeading(date, label)}</h2>
 
       {items.length === 0 ? (
