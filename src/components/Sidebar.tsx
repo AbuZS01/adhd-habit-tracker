@@ -56,59 +56,103 @@ export default function Sidebar({
   const pathname = usePathname();
   const childId = useCurrentChildId(pathname);
   const childName = useChildName(childId);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Close the drawer automatically whenever navigation happens.
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setMobileOpen(false);
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [mobileOpen]);
 
   return (
-    <aside className="sidebar no-print">
-      <Link href="/" className="sidebar-logo">
-        <span className="sidebar-logo-mark">🏡</span>
-        Home Education Log
-      </Link>
+    <>
+      <div className="sidebar-mobile-bar no-print">
+        <button
+          className="sidebar-menu-btn"
+          type="button"
+          onClick={() => setMobileOpen(true)}
+          aria-label="Open menu"
+        >
+          ☰
+        </button>
+        <Link href="/" className="sidebar-mobile-logo">
+          <span aria-hidden="true">🏡</span>
+          Home Education Log
+        </Link>
+      </div>
 
-      {signedIn && (
-        <nav className="sidebar-nav" aria-label="Primary">
-          {NAV_ITEMS.map((item) => {
-            const isActive = item.exact ? pathname === item.href : pathname.startsWith(item.href);
-            return (
-              <Link key={item.href} href={item.href} className={isActive ? 'active' : ''}>
-                <span className="sidebar-nav-icon" aria-hidden="true">
-                  {item.icon}
-                </span>
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-      )}
+      <div className={`scrim sidebar-scrim${mobileOpen ? ' open' : ''}`} onClick={() => setMobileOpen(false)} />
 
-      {signedIn && childId && (
-        <div className="sidebar-child-section">
-          <p className="sidebar-child-name">{childName ?? 'Loading…'}</p>
-          <nav className="sidebar-nav" aria-label="Child">
-            {CHILD_SECTIONS.map((section) => {
-              const href = `/children/${childId}${section.suffix}`;
-              const isActive = pathname === href;
+      <aside className={`sidebar no-print${mobileOpen ? ' mobile-open' : ''}`}>
+        <div className="sidebar-head">
+          <Link href="/" className="sidebar-logo">
+            <span className="sidebar-logo-mark">🏡</span>
+            Home Education Log
+          </Link>
+          <button
+            className="sidebar-close-btn"
+            type="button"
+            onClick={() => setMobileOpen(false)}
+            aria-label="Close menu"
+          >
+            ✕
+          </button>
+        </div>
+
+        {signedIn && (
+          <nav className="sidebar-nav" aria-label="Primary">
+            {NAV_ITEMS.map((item) => {
+              const isActive = item.exact ? pathname === item.href : pathname.startsWith(item.href);
               return (
-                <Link key={section.suffix} href={href} className={isActive ? 'active' : ''}>
+                <Link key={item.href} href={item.href} className={isActive ? 'active' : ''}>
                   <span className="sidebar-nav-icon" aria-hidden="true">
-                    {section.icon}
+                    {item.icon}
                   </span>
-                  {section.label}
+                  {item.label}
                 </Link>
               );
             })}
           </nav>
-        </div>
-      )}
+        )}
 
-      {signedIn && signOutAction && (
-        <div className="sidebar-footer">
-          <form action={signOutAction}>
-            <button className="link-btn" type="submit">
-              Sign out
-            </button>
-          </form>
-        </div>
-      )}
-    </aside>
+        {signedIn && childId && (
+          <div className="sidebar-child-section">
+            <p className="sidebar-child-name">{childName ?? 'Loading…'}</p>
+            <nav className="sidebar-nav" aria-label="Child">
+              {CHILD_SECTIONS.map((section) => {
+                const href = `/children/${childId}${section.suffix}`;
+                const isActive = pathname === href;
+                return (
+                  <Link key={section.suffix} href={href} className={isActive ? 'active' : ''}>
+                    <span className="sidebar-nav-icon" aria-hidden="true">
+                      {section.icon}
+                    </span>
+                    {section.label}
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        )}
+
+        {signedIn && signOutAction && (
+          <div className="sidebar-footer">
+            <form action={signOutAction}>
+              <button className="link-btn" type="submit">
+                Sign out
+              </button>
+            </form>
+          </div>
+        )}
+      </aside>
+    </>
   );
 }
