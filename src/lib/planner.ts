@@ -31,6 +31,65 @@ export function addDaysIso(dateIso: string, days: number): string {
   return new Date(d.getTime() + days * DAY_MS).toISOString().slice(0, 10);
 }
 
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+export function currentMonthIso(date: Date = new Date()): string {
+  return date.toISOString().slice(0, 7);
+}
+
+/** Adds `delta` calendar months to a "YYYY-MM" string. */
+export function addMonthsIso(monthIso: string, delta: number): string {
+  const [yearStr, monthStr] = monthIso.split('-');
+  const year = Number(yearStr);
+  const monthIndex = Number(monthStr) - 1 + delta;
+  const d = new Date(Date.UTC(year, monthIndex, 1));
+  return d.toISOString().slice(0, 7);
+}
+
+export function monthLabel(monthIso: string): string {
+  const [yearStr, monthStr] = monthIso.split('-');
+  return `${MONTH_NAMES[Number(monthStr) - 1]} ${yearStr}`;
+}
+
+export interface MonthGridDay {
+  date: string;
+  dayNumber: number;
+  inMonth: boolean;
+}
+
+/**
+ * Full Monday-start calendar grid for a "YYYY-MM" month, padded with the
+ * trailing/leading days of the adjacent months needed to complete each
+ * week — a flat list (not grouped into week arrays) since a CSS grid with
+ * 7 columns auto-wraps rows on its own.
+ */
+export function monthGridDays(monthIso: string): MonthGridDay[] {
+  const [yearStr, monthStr] = monthIso.split('-');
+  const year = Number(yearStr);
+  const monthIndex = Number(monthStr) - 1;
+  const firstOfMonth = new Date(Date.UTC(year, monthIndex, 1));
+  const lastOfMonth = new Date(Date.UTC(year, monthIndex + 1, 0));
+
+  const gridStart = startOfWeek(firstOfMonth);
+  const gridEnd = addDaysIso(startOfWeek(lastOfMonth), 6);
+
+  const days: MonthGridDay[] = [];
+  let cursor = gridStart;
+  while (cursor <= gridEnd) {
+    const cursorDate = new Date(`${cursor}T00:00:00Z`);
+    days.push({
+      date: cursor,
+      dayNumber: cursorDate.getUTCDate(),
+      inMonth: cursorDate.getUTCMonth() === monthIndex,
+    });
+    cursor = addDaysIso(cursor, 1);
+  }
+  return days;
+}
+
 export interface PlannedActivityInput {
   id: string;
   subjectId: string | null;
