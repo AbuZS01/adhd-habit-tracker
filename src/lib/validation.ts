@@ -155,6 +155,10 @@ export const createPlannedActivitySchema = z.object({
   title: plannedTitleSchema,
 });
 
+export const updatePlannedActivitySchema = z.object({
+  completed: z.boolean(),
+});
+
 // Kept in sync with the constraints passed to `onBeforeGenerateToken` in
 // src/app/api/attachments/upload/route.ts (that's the actual enforcement
 // point at upload time) — this copy validates the confirm-attachment

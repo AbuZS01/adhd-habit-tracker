@@ -4,7 +4,7 @@ import { eq, and, gte, lte } from 'drizzle-orm';
 import { requireSessionFamily } from '@/lib/family';
 import { getDb } from '@/db/client';
 import { children as childrenTable, subjects as subjectsTable, logEntries, plannedActivities } from '@/db/schema';
-import { monthGridDays, monthLabel, currentMonthIso, addMonthsIso, withCompletionStatus } from '@/lib/planner';
+import { monthGridDays, monthLabel, currentMonthIso, addMonthsIso, withCompletionStatus, computeDayStatus } from '@/lib/planner';
 import PlannerDay from '@/components/PlannerDay';
 import PlannerMonthGrid from '@/components/PlannerMonthGrid';
 
@@ -57,6 +57,7 @@ export default async function PlannerPage({
         subjectId: plannedActivities.subjectId,
         plannedDate: plannedActivities.plannedDate,
         title: plannedActivities.title,
+        completedAt: plannedActivities.completedAt,
       })
       .from(plannedActivities)
       .where(and(eq(plannedActivities.childId, childId), gte(plannedActivities.plannedDate, gridStart), lte(plannedActivities.plannedDate, gridEnd))),
@@ -79,18 +80,22 @@ export default async function PlannerPage({
   const prevMonth = addMonthsIso(monthIso, -1);
   const nextMonth = addMonthsIso(monthIso, 1);
 
-  const gridDaysWithChips = gridDays.map((d) => ({
-    date: d.date,
-    dayNumber: d.dayNumber,
-    inMonth: d.inMonth,
-    isToday: d.date === todayIso,
-    isSelected: d.date === selectedDay,
-    items: (plannedByDate.get(d.date) ?? []).map((p) => ({
-      subjectIndex: p.subjectId ? subjectIndexById.get(p.subjectId) ?? 0 : -1,
-      subjectName: p.subjectId ? subjectNameById.get(p.subjectId) ?? 'Subject' : null,
-      completed: p.completed,
-    })),
-  }));
+  const gridDaysWithChips = gridDays.map((d) => {
+    const dayItems = plannedByDate.get(d.date) ?? [];
+    return {
+      date: d.date,
+      dayNumber: d.dayNumber,
+      inMonth: d.inMonth,
+      isToday: d.date === todayIso,
+      isSelected: d.date === selectedDay,
+      status: computeDayStatus(dayItems.map((p) => p.completed), d.date, todayIso),
+      items: dayItems.map((p) => ({
+        subjectIndex: p.subjectId ? subjectIndexById.get(p.subjectId) ?? 0 : -1,
+        subjectName: p.subjectId ? subjectNameById.get(p.subjectId) ?? 'Subject' : null,
+        completed: p.completed,
+      })),
+    };
+  });
 
   const selectedDayItems = (plannedByDate.get(selectedDay) ?? []).map((p) => ({
     ...p,
@@ -106,7 +111,7 @@ export default async function PlannerPage({
       <div className="page-header">
         <div>
           <h1 style={{ marginBottom: 0 }}>{child.name}&apos;s planner</h1>
-          <p className="page-sub">Plan which subjects to cover each day; entries you log automatically mark a plan as done.</p>
+          <p className="page-sub">Plan which subjects to cover each day. Tick items off directly, or log an entry — either marks a plan as done.</p>
         </div>
       </div>
 

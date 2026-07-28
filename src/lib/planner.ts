@@ -1,7 +1,8 @@
 /**
- * Weekly planner helpers. A planned activity's "completed" state is never
- * stored — it's derived here by checking for a matching log entry, so the
- * plan and the evidence record can't drift out of sync with each other.
+ * Weekly planner helpers. A planned activity is considered completed if
+ * either signal is true: a guardian manually ticked it off (`completedAt`),
+ * or a matching log entry exists for the same subject + date (so logging
+ * real evidence always counts, even if it was never manually ticked).
  */
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -95,6 +96,7 @@ export interface PlannedActivityInput {
   subjectId: string | null;
   plannedDate: string;
   title: string | null;
+  completedAt: string | Date | null;
 }
 
 export interface LoggedKeyInput {
@@ -110,7 +112,7 @@ function logKey(subjectId: string | null, date: string): string {
   return `${subjectId ?? 'general'}::${date}`;
 }
 
-/** Marks each planned activity as completed if a log entry exists for the same subject + date. */
+/** Marks each planned activity as completed if it was manually ticked or a log entry exists for the same subject + date. */
 export function withCompletionStatus(
   planned: PlannedActivityInput[],
   loggedEntries: LoggedKeyInput[],
@@ -118,6 +120,23 @@ export function withCompletionStatus(
   const loggedKeys = new Set(loggedEntries.map((e) => logKey(e.subjectId, e.entryDate)));
   return planned.map((p) => ({
     ...p,
-    completed: loggedKeys.has(logKey(p.subjectId, p.plannedDate)),
+    completed: p.completedAt !== null || loggedKeys.has(logKey(p.subjectId, p.plannedDate)),
   }));
+}
+
+export type DayStatus = 'completed' | 'partial' | 'missed' | null;
+
+/**
+ * A day's overall status, derived purely from its items' completed state —
+ * never stored. A day with nothing planned has no status. A day that isn't
+ * fully done yet is only "missed" once it's in the past — you can't miss
+ * today or the future, so an empty or partial day that hasn't happened yet
+ * gets no status (neutral), not "missed".
+ */
+export function computeDayStatus(itemsCompleted: boolean[], date: string, todayIso: string): DayStatus {
+  if (itemsCompleted.length === 0) return null;
+  const doneCount = itemsCompleted.filter(Boolean).length;
+  if (doneCount === itemsCompleted.length) return 'completed';
+  if (doneCount > 0) return 'partial';
+  return date < todayIso ? 'missed' : null;
 }

@@ -1,8 +1,15 @@
 import Link from 'next/link';
+import type { DayStatus } from '@/lib/planner';
 
 const WEEKDAY_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const SUBJECT_COLOR_COUNT = 6;
 const MAX_VISIBLE_CHIPS = 3;
+
+const STATUS_LABEL: Record<Exclude<DayStatus, null>, string> = {
+  completed: 'Completed',
+  partial: 'Partially completed',
+  missed: 'Missed',
+};
 
 export interface GridChipItem {
   subjectIndex: number; // -1 for general/cross-curricular
@@ -16,6 +23,7 @@ export interface GridDay {
   inMonth: boolean;
   isToday: boolean;
   isSelected: boolean;
+  status: DayStatus;
   items: GridChipItem[];
 }
 
@@ -52,6 +60,9 @@ export default function PlannerMonthGrid({
               className={`planner-month-day${day.inMonth ? '' : ' outside'}${day.isSelected ? ' selected' : ''}`}
             >
               <span className={`planner-month-day-number${day.isToday ? ' today' : ''}`}>{day.dayNumber}</span>
+              {day.status && (
+                <span className={`planner-month-day-status dot ${day.status}`} title={STATUS_LABEL[day.status]} />
+              )}
               <div className="planner-month-chips">
                 {visibleItems.map((item, i) => (
                   <span
