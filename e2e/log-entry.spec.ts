@@ -12,10 +12,7 @@ test('logging an entry with a subject shows it under that subject', async ({ pag
   const form = page.locator('form.stacked').first();
   await form.getByLabel('Subject').selectOption(maths.id);
   await form.getByLabel('Title').fill('Fractions worksheet');
-  // Not `getByLabel` — the label also wraps the dictation mic button ahead
-  // of the textarea in the DOM, which HTML's implicit-label-association
-  // rules point at instead (the first labelable descendant wins).
-  await form.locator('textarea').fill('Halves and quarters, went well.');
+  await form.getByLabel('Notes (optional)').fill('Halves and quarters, went well.');
   await form.getByRole('button', { name: 'Add entry' }).click();
 
   const mathsSection = page.locator('section.subject-section', { hasText: 'Maths' });

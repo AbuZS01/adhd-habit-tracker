@@ -893,6 +893,12 @@ textarea:focus {
   color: var(--text-muted);
 }
 
+.notes-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
 .label-row {
   display: flex;
   align-items: center;

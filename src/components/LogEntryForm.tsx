@@ -161,9 +161,9 @@ export default function LogEntryForm({
         Title
         <input value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={140} placeholder="e.g. Fractions worksheet" />
       </label>
-      <label>
+      <div className="notes-field">
         <span className="label-row">
-          Notes (optional)
+          <label htmlFor="entry-notes">Notes (optional)</label>
           {speechSupported && (
             <button
               type="button"
@@ -175,8 +175,14 @@ export default function LogEntryForm({
             </button>
           )}
         </span>
-        <textarea value={description} onChange={(e) => setDescription(e.target.value)} maxLength={4000} rows={2} />
-      </label>
+        <textarea
+          id="entry-notes"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          maxLength={4000}
+          rows={2}
+        />
+      </div>
       <div className="form-row">
         <label>
           Type
