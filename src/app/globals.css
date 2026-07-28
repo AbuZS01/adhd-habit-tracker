@@ -832,6 +832,7 @@ form.stacked {
 
 .form-row {
   display: flex;
+  align-items: flex-end;
   gap: 0.75rem;
   flex-wrap: wrap;
 }
@@ -947,6 +948,9 @@ textarea:focus {
   border-radius: 999px;
   cursor: pointer;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .mic-btn:hover {
@@ -958,6 +962,71 @@ textarea:focus {
   color: var(--danger);
   border-color: var(--danger);
   background: rgba(239, 68, 68, 0.1);
+}
+
+.soundwave-icon {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 0.85rem;
+  flex-shrink: 0;
+}
+
+.soundwave-bar {
+  width: 2.5px;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+.soundwave-bar:nth-child(1) {
+  height: 45%;
+}
+
+.soundwave-bar:nth-child(2) {
+  height: 90%;
+}
+
+.soundwave-bar:nth-child(3) {
+  height: 65%;
+}
+
+.soundwave-bar:nth-child(4) {
+  height: 35%;
+}
+
+.soundwave-icon.active .soundwave-bar {
+  animation: soundwave-bounce 0.9s ease-in-out infinite;
+}
+
+.soundwave-icon.active .soundwave-bar:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.soundwave-icon.active .soundwave-bar:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.soundwave-icon.active .soundwave-bar:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.soundwave-icon.active .soundwave-bar:nth-child(4) {
+  animation-delay: 0.45s;
+}
+
+@keyframes soundwave-bounce {
+  0%, 100% {
+    height: 25%;
+  }
+  50% {
+    height: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .soundwave-icon.active .soundwave-bar {
+    animation: none;
+  }
 }
 
 .subject-section {

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import path from 'node:path';
-import { seedChild, today } from './helpers';
+import { seedChild, today, seedFakeAttachment } from './helpers';
 
 const FIXTURES_DIR = path.join(__dirname, 'fixtures');
 
@@ -44,6 +44,30 @@ test('evidence buttons show Photo, Video and File, each scoped to its own file t
   // endpoint, which isn't reachable from this test environment.
   await photoBtn.locator('input[type=file]').setInputFiles(path.join(FIXTURES_DIR, 'sample.jpg'));
   await expect(form.getByText('sample.jpg selected')).toBeVisible();
+});
+
+test('once an entry has evidence, the buttons collapse behind "+ Add more evidence"', async ({ page, request }) => {
+  const child = await seedChild(request, `Collapse Kid ${Date.now()}`);
+
+  await page.goto(`/children/${child.id}`);
+  const form = page.locator('form.stacked').first();
+  await form.getByLabel('Title').fill('Museum trip');
+  await form.getByRole('button', { name: 'Add entry' }).click();
+
+  const entryItem = page.locator('.entry-item', { hasText: 'Museum trip' });
+  await expect(entryItem.locator('.evidence-btn-row')).toBeVisible();
+
+  const { entries } = await (await request.get(`/api/entries?childId=${child.id}`)).json();
+  await seedFakeAttachment(entries[0].id);
+  await page.reload();
+
+  const reloadedItem = page.locator('.entry-item', { hasText: 'Museum trip' });
+  await expect(reloadedItem.locator('.evidence-btn-row')).not.toBeVisible();
+  const addMoreLink = reloadedItem.getByRole('button', { name: '+ Add more evidence' });
+  await expect(addMoreLink).toBeVisible();
+
+  await addMoreLink.click();
+  await expect(reloadedItem.locator('.evidence-btn-row')).toBeVisible();
 });
 
 test('an entry logged for the same subject/date marks a matching plan as completed', async ({ page, request }) => {

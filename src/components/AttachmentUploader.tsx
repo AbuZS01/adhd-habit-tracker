@@ -145,10 +145,14 @@ export function EvidenceButtons({
   );
 }
 
-export default function AttachmentUploader({ logEntryId }: { logEntryId: string }) {
+export default function AttachmentUploader({ logEntryId, hasAttachments }: { logEntryId: string; hasAttachments: boolean }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [uploadError, setUploadError] = useState<string | null>(null);
+  // Once an entry already has evidence, don't show the three buttons by
+  // default — they read as duplicated UI sitting right under a photo you
+  // just added. Tapping "+ Add more evidence" brings them back.
+  const [expanded, setExpanded] = useState(!hasAttachments);
 
   function handleFileSelected(file: File, kind: EvidenceKind) {
     setUploadError(null);
@@ -158,13 +162,20 @@ export default function AttachmentUploader({ logEntryId }: { logEntryId: string 
         setUploadError(result.error);
         return;
       }
+      setExpanded(false);
       router.refresh();
     });
   }
 
   return (
     <div className="attachment-uploader no-print">
-      <EvidenceButtons onFileSelected={handleFileSelected} disabled={isPending} />
+      {expanded ? (
+        <EvidenceButtons onFileSelected={handleFileSelected} disabled={isPending} />
+      ) : (
+        <button type="button" className="link-btn" onClick={() => setExpanded(true)}>
+          + Add more evidence
+        </button>
+      )}
       {isPending && <p className="b-sub">Uploading…</p>}
       {uploadError && <p className="form-error">{uploadError}</p>}
     </div>

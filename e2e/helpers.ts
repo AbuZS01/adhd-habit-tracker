@@ -1,4 +1,5 @@
 import type { APIRequestContext } from '@playwright/test';
+import postgres from 'postgres';
 
 export interface SeededChild {
   id: string;
@@ -33,4 +34,24 @@ export function daysAgo(n: number): string {
   const d = new Date();
   d.setUTCDate(d.getUTCDate() - n);
   return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Inserts an attachment row directly via SQL, bypassing the real upload
+ * flow — actually uploading to Vercel Blob isn't reachable from this
+ * sandbox. Only useful for testing UI that reacts to "this entry already
+ * has evidence" (e.g. the collapsed evidence-buttons state), not upload
+ * itself.
+ */
+export async function seedFakeAttachment(logEntryId: string): Promise<void> {
+  const sql = postgres(process.env.DATABASE_URL!, { max: 1, prepare: false });
+  try {
+    const [user] = await sql<{ id: string }[]>`select id from users limit 1`;
+    await sql`
+      insert into attachments (log_entry_id, pathname, original_name, content_type, size, uploaded_by_user_id)
+      values (${logEntryId}, 'entries/test/fake.jpg', 'fake.jpg', 'image/jpeg', 1000, ${user!.id})
+    `;
+  } finally {
+    await sql.end();
+  }
 }

@@ -112,7 +112,7 @@ export default function LogEntryItem({
           ))}
         </div>
       )}
-      {uploadsEnabled && <AttachmentUploader logEntryId={entry.id} />}
+      {uploadsEnabled && <AttachmentUploader logEntryId={entry.id} hasAttachments={attachments.length > 0} />}
       <div className="no-print">
         {confirming ? (
           <span className="entry-actions">
