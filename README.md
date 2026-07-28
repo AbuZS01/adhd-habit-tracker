@@ -57,6 +57,23 @@ to work.
 - `npm run lint` — ESLint.
 - `npm run db:generate` — generate a Drizzle migration from `src/db/schema.ts`.
 - `npm run db:migrate` — apply pending migrations to `DATABASE_URL`.
+- `npm test` — unit tests for validation schemas and pure logic (`src/lib/*`).
+- `npm run test:e2e` — Playwright suite covering the app's core flows end-to-end (see below).
+
+## Testing
+
+**Unit tests** (`npm test`) cover validation schemas and pure logic in `src/lib/` — no database or browser required.
+
+**End-to-end tests** (`npm run test:e2e`) drive a real browser against a production build (`next build && next start`) and cover the core flows: signing in, adding a child, logging an entry (including the Photo/Video/File evidence buttons), the planner (adding a plan and auto-completing it via a matching log entry), the progress page, and sidebar navigation on desktop and mobile viewports.
+
+Requirements:
+- `DATABASE_URL` pointing at a **disposable local/test Postgres database** — `e2e/global-setup.ts` truncates every app table before the run and refuses to run against a non-localhost host unless `E2E_DB_CONFIRM=yes` is set.
+- A signed-in session is seeded directly in the database (a `users` row + a database-backed session, mirroring what a real magic-link sign-in produces), so the suite doesn't depend on a real mailbox.
+- Uploads aren't exercised end-to-end (that needs a real Vercel Blob store); the suite only checks that the evidence buttons render correctly and stage a selected file.
+
+```bash
+DATABASE_URL="postgres://postgres:postgres@127.0.0.1:5432/homeschool_test" npm run test:e2e
+```
 
 ## Deployment (Vercel)
 
