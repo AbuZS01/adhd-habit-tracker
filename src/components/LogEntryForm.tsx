@@ -28,6 +28,17 @@ function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+function SoundwaveIcon({ active }: { active: boolean }) {
+  return (
+    <span className={`soundwave-icon${active ? ' active' : ''}`} aria-hidden="true">
+      <span className="soundwave-bar" />
+      <span className="soundwave-bar" />
+      <span className="soundwave-bar" />
+      <span className="soundwave-bar" />
+    </span>
+  );
+}
+
 export default function LogEntryForm({
   childId,
   subjects,
@@ -171,7 +182,8 @@ export default function LogEntryForm({
               onClick={toggleDictation}
               aria-pressed={isListening}
             >
-              {isListening ? '● Listening… (tap to stop)' : '🎤 Dictate'}
+              <SoundwaveIcon active={isListening} />
+              {isListening ? 'Listening… (tap to stop)' : 'Dictate'}
             </button>
           )}
         </span>
