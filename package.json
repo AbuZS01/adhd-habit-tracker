@@ -12,7 +12,8 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "db:check": "tsx scripts/check-db.ts",
     "db:reset": "tsx scripts/reset-db.ts",
-    "test": "node --conditions react-server --import tsx --test src/__tests__/*.test.ts src/__tests__/*.test.mts"
+    "test": "node --conditions react-server --import tsx --test src/__tests__/*.test.ts src/__tests__/*.test.mts",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.2",
@@ -29,6 +30,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.5",
+    "@playwright/test": "^1.62.0",
     "@types/node": "^22.10.7",
     "@types/nodemailer": "^7.0.2",
     "@types/react": "^19.0.7",

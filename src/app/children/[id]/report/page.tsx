@@ -35,7 +35,9 @@ function EntryReportItem({ entry, entryAttachments }: { entry: EntryRow; entryAt
               // eslint-disable-next-line @next/next/no-img-element -- authenticated same-origin proxy, not a static/optimizable asset
               <img key={a.id} src={`/api/attachments/${a.id}/file`} alt={a.originalName} className="report-attachment-img" />
             ) : (
-              <p key={a.id} className="report-link">📄 {a.originalName}</p>
+              <p key={a.id} className="report-link">
+                {a.contentType.startsWith('video/') ? '🎬' : '📄'} {a.originalName}
+              </p>
             )
           )}
         </div>

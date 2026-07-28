@@ -5,6 +5,7 @@ import {
   weekDates,
   addDaysIso,
   withCompletionStatus,
+  computeDayStatus,
   currentMonthIso,
   addMonthsIso,
   monthLabel,
@@ -43,9 +44,9 @@ test('addDaysIso: adds and subtracts days across month boundaries', () => {
 
 test('withCompletionStatus: matches on subject + date, general plans match null-subject entries', () => {
   const planned = [
-    { id: 'p1', subjectId: 'maths', plannedDate: '2026-07-20', title: 'Fractions' },
-    { id: 'p2', subjectId: 'science', plannedDate: '2026-07-20', title: null },
-    { id: 'p3', subjectId: null, plannedDate: '2026-07-21', title: 'Museum trip' },
+    { id: 'p1', subjectId: 'maths', plannedDate: '2026-07-20', title: 'Fractions', completedAt: null },
+    { id: 'p2', subjectId: 'science', plannedDate: '2026-07-20', title: null, completedAt: null },
+    { id: 'p3', subjectId: null, plannedDate: '2026-07-21', title: 'Museum trip', completedAt: null },
   ];
   const logged = [
     { subjectId: 'maths', entryDate: '2026-07-20' },
@@ -57,6 +58,36 @@ test('withCompletionStatus: matches on subject + date, general plans match null-
   assert.equal(result.find((p) => p.id === 'p1')!.completed, true);
   assert.equal(result.find((p) => p.id === 'p2')!.completed, false);
   assert.equal(result.find((p) => p.id === 'p3')!.completed, true);
+});
+
+test('withCompletionStatus: a manual tick (completedAt set) counts as completed even without a matching log entry', () => {
+  const planned = [{ id: 'p1', subjectId: 'science', plannedDate: '2026-07-20', title: null, completedAt: '2026-07-20T10:00:00Z' }];
+
+  const result = withCompletionStatus(planned, []);
+
+  assert.equal(result[0]!.completed, true);
+});
+
+test('computeDayStatus: no items planned means no status', () => {
+  assert.equal(computeDayStatus([], '2026-07-20', '2026-07-28'), null);
+});
+
+test('computeDayStatus: all items done is completed, regardless of date', () => {
+  assert.equal(computeDayStatus([true, true], '2026-07-20', '2026-07-28'), 'completed');
+  assert.equal(computeDayStatus([true], '2026-08-01', '2026-07-28'), 'completed');
+});
+
+test('computeDayStatus: some but not all done is partially completed', () => {
+  assert.equal(computeDayStatus([true, false], '2026-07-20', '2026-07-28'), 'partial');
+});
+
+test('computeDayStatus: nothing done on a past day is missed', () => {
+  assert.equal(computeDayStatus([false, false], '2026-07-20', '2026-07-28'), 'missed');
+});
+
+test('computeDayStatus: nothing done yet on today or a future day is not "missed"', () => {
+  assert.equal(computeDayStatus([false], '2026-07-28', '2026-07-28'), null);
+  assert.equal(computeDayStatus([false], '2026-08-01', '2026-07-28'), null);
 });
 
 test('currentMonthIso: formats a date as YYYY-MM', () => {

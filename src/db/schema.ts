@@ -222,6 +222,13 @@ export const plannedActivities = pgTable('planned_activities', {
   subjectId: uuid('subject_id').references(() => subjects.id, { onDelete: 'set null' }),
   plannedDate: date('planned_date', { mode: 'string' }).notNull(),
   title: text('title'),
+  // Manual tick-off, independent of the auto-derived match against
+  // log_entries below — lets a guardian mark a plan done without writing a
+  // full log entry. The effective "completed" state a plan shows is
+  // `completedAt is not null` OR a matching log entry exists (see
+  // src/lib/planner.ts withCompletionStatus) — logging real evidence always
+  // counts as done even if this was never manually ticked.
+  completedAt: timestamp('completed_at', { withTimezone: true }),
   createdByUserId: uuid('created_by_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({

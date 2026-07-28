@@ -73,6 +73,17 @@ export default function PlannerDay({
     });
   }
 
+  function toggleCompleted(id: string, completed: boolean) {
+    startTransition(async () => {
+      const res = await fetch(`/api/planned-activities/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ completed }),
+      });
+      if (res.ok) router.refresh();
+    });
+  }
+
   return (
     <section className="card planner-day">
       <h2 style={{ marginTop: 0, fontSize: '1.05rem' }}>{formatDayHeading(date, label)}</h2>
@@ -83,9 +94,16 @@ export default function PlannerDay({
         <ul className="planner-item-list">
           {items.map((item) => (
             <li key={item.id} className="planner-item">
-              <span className={`planner-status ${item.completed ? 'done' : 'pending'}`}>
+              <button
+                type="button"
+                className={`planner-status no-print ${item.completed ? 'done' : 'pending'}`}
+                onClick={() => toggleCompleted(item.id, !item.completed)}
+                disabled={isPending}
+                aria-pressed={item.completed}
+                aria-label={item.completed ? 'Mark as not started' : 'Mark as completed'}
+              >
                 {item.completed ? '✓' : '○'}
-              </span>
+              </button>
               <span className="planner-item-text">
                 {item.subjectName && <strong>{item.subjectName}</strong>}
                 {item.subjectName && item.title && ' — '}
