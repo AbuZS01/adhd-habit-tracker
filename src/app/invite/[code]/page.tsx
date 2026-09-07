@@ -62,7 +62,7 @@ export default async function InvitePage({ params }: { params: Promise<{ code: s
   return (
     <main className="container">
       <h1>Join {invite.familyName}</h1>
-      <p style={{ color: 'var(--text-muted)' }}>
+      <p style={{ color: 'var(--color-neutral-700)' }}>
         You&apos;ll become a guardian of this family, with full access to every child&apos;s profile, subjects,
         and log entries.
       </p>

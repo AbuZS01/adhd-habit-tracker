@@ -40,6 +40,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const db = getDb();
+
+  if (parsed.data.name) {
+    const siblings = await db
+      .select({ id: subjects.id, name: subjects.name })
+      .from(subjects)
+      .where(and(eq(subjects.childId, existing.childId), eq(subjects.isArchived, false)));
+    const normalized = parsed.data.name.trim().toLowerCase();
+    if (siblings.some((s) => s.id !== id && s.name.trim().toLowerCase() === normalized)) {
+      return NextResponse.json({ error: 'That subject already exists.' }, { status: 409 });
+    }
+  }
+
   const [updated] = await db.update(subjects).set(parsed.data).where(eq(subjects.id, id)).returning();
 
   return NextResponse.json({ subject: updated });

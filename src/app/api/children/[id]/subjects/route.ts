@@ -52,6 +52,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   const db = getDb();
+  const existing = await db
+    .select({ name: subjects.name })
+    .from(subjects)
+    .where(and(eq(subjects.childId, childId), eq(subjects.isArchived, false)));
+
+  const normalized = parsed.data.name.trim().toLowerCase();
+  if (existing.some((s) => s.name.trim().toLowerCase() === normalized)) {
+    return NextResponse.json({ error: 'That subject already exists.' }, { status: 409 });
+  }
+
   const [top] = await db
     .select({ sortOrder: subjects.sortOrder })
     .from(subjects)

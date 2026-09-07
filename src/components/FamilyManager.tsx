@@ -105,12 +105,12 @@ export default function FamilyManager({
         ) : (
           <p>{familyName}</p>
         )}
-        {renameMessage && <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{renameMessage}</p>}
+        {renameMessage && <p style={{ color: 'var(--color-neutral-700)', fontSize: '0.85rem' }}>{renameMessage}</p>}
       </section>
 
       <section className="card">
         <h2 style={{ marginTop: 0, fontSize: '1.05rem' }}>Nation</h2>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+        <p style={{ color: 'var(--color-neutral-700)', fontSize: '0.9rem' }}>
           Home education law differs across the UK — setting this shows the right legal information on your
           dashboard and evidence reports.
         </p>
@@ -131,31 +131,47 @@ export default function FamilyManager({
         ) : (
           <p>{nation ? NATION_LABELS[nation] : 'Not set'}</p>
         )}
-        {nationMessage && <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{nationMessage}</p>}
+        {nationMessage && <p style={{ color: 'var(--color-neutral-700)', fontSize: '0.85rem' }}>{nationMessage}</p>}
       </section>
 
       <section className="card">
         <h2 style={{ marginTop: 0, fontSize: '1.05rem' }}>Guardians</h2>
-        <ul className="subject-list">
-          {members.map((m) => (
-            <li key={m.userId} className="subject-row">
-              <span style={{ flex: 1 }}>
-                {m.name ?? m.email} <span style={{ color: 'var(--text-muted)' }}>({m.role})</span>
-              </span>
-              {isOwner && m.role !== 'owner' && (
-                <button className="link-btn" onClick={() => removeMember(m.userId)} disabled={isPending}>
-                  Remove
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Role</th>
+                {isOwner && <th />}
+              </tr>
+            </thead>
+            <tbody>
+              {members.map((m) => (
+                <tr key={m.userId}>
+                  <td>{m.name ?? m.email}</td>
+                  <td>
+                    <span className="tag tag-neutral">{m.role}</span>
+                  </td>
+                  {isOwner && (
+                    <td style={{ textAlign: 'right' }}>
+                      {m.role !== 'owner' && (
+                        <button className="link-btn" onClick={() => removeMember(m.userId)} disabled={isPending}>
+                          Remove
+                        </button>
+                      )}
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       {isOwner && (
         <section className="card">
           <h2 style={{ marginTop: 0, fontSize: '1.05rem' }}>Invite a co-guardian</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+          <p style={{ color: 'var(--color-neutral-700)', fontSize: '0.9rem' }}>
             Generate a one-time link valid for 7 days. Anyone with the link can join this family and see all
             children&apos;s records — only share it with people you trust.
           </p>

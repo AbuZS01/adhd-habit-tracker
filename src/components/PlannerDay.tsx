@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { Check, Circle } from 'lucide-react';
 
 interface SubjectOption {
   id: string;
@@ -102,7 +103,7 @@ export default function PlannerDay({
                 aria-pressed={item.completed}
                 aria-label={item.completed ? 'Mark as not started' : 'Mark as completed'}
               >
-                {item.completed ? '✓' : '○'}
+                {item.completed ? <Check size={16} strokeWidth={2.5} /> : <Circle size={15} strokeWidth={2} />}
               </button>
               <span className="planner-item-text">
                 {item.subjectName && <strong>{item.subjectName}</strong>}

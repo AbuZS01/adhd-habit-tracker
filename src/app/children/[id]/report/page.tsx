@@ -138,7 +138,7 @@ export default async function EvidenceReportPage({
   return (
     <main className="container report">
       <div className="page-header no-print">
-        <h1 style={{ marginBottom: 0 }}>Evidence report</h1>
+        <h1 style={{ marginBottom: 0, fontWeight: 400 }}>Evidence report</h1>
         <PrintButton />
       </div>
 
@@ -156,58 +156,60 @@ export default async function EvidenceReportPage({
         </button>
       </form>
 
-      <header className="report-header">
-        <h1>{child.name}</h1>
-        {child.yearGroup && <p>{child.yearGroup}</p>}
-        <p>
-          Period: {validFrom ? formatDate(validFrom) : 'all records'} – {validTo ? formatDate(validTo) : 'present'}
-        </p>
-      </header>
-
-      {family?.nation && (
-        <section className="report-legal-context">
+      <div className="report-plate">
+        <header className="report-header">
+          <h1 style={{ fontStyle: 'italic', fontWeight: 400 }}>{child.name}</h1>
+          {child.yearGroup && <p>{child.yearGroup}</p>}
           <p>
-            <strong>{getNationContent(family.nation).legalStandard}</strong>
+            Period: {validFrom ? formatDate(validFrom) : 'all records'} – {validTo ? formatDate(validTo) : 'present'}
           </p>
-          <ul>
-            {getNationContent(family.nation).currentDuties.map((duty, i) => (
-              <li key={i}>{duty}</li>
-            ))}
-          </ul>
-        </section>
-      )}
+        </header>
 
-      {entries.length === 0 && <p>No log entries in this period.</p>}
-
-      {subjects.map((subject) => {
-        const subjectEntries = entriesBySubject.get(subject.id) ?? [];
-        if (subjectEntries.length === 0) return null;
-        return (
-          <section className="report-subject" key={subject.id}>
-            <h2>{subject.name}</h2>
+        {family?.nation && (
+          <section className="report-legal-context">
+            <p>
+              <strong>{getNationContent(family.nation).legalStandard}</strong>
+            </p>
             <ul>
-              {subjectEntries.map((entry) => (
+              {getNationContent(family.nation).currentDuties.map((duty, i) => (
+                <li key={i}>{duty}</li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {entries.length === 0 && <p>No log entries in this period.</p>}
+
+        {subjects.map((subject) => {
+          const subjectEntries = entriesBySubject.get(subject.id) ?? [];
+          if (subjectEntries.length === 0) return null;
+          return (
+            <section className="report-subject" key={subject.id}>
+              <h2>{subject.name}</h2>
+              <ul>
+                {subjectEntries.map((entry) => (
+                  <EntryReportItem key={entry.id} entry={entry} entryAttachments={attachmentsByEntry.get(entry.id) ?? []} />
+                ))}
+              </ul>
+            </section>
+          );
+        })}
+
+        {generalEntries.length > 0 && (
+          <section className="report-subject">
+            <h2>General</h2>
+            <ul>
+              {generalEntries.map((entry) => (
                 <EntryReportItem key={entry.id} entry={entry} entryAttachments={attachmentsByEntry.get(entry.id) ?? []} />
               ))}
             </ul>
           </section>
-        );
-      })}
+        )}
 
-      {generalEntries.length > 0 && (
-        <section className="report-subject">
-          <h2>General</h2>
-          <ul>
-            {generalEntries.map((entry) => (
-              <EntryReportItem key={entry.id} entry={entry} entryAttachments={attachmentsByEntry.get(entry.id) ?? []} />
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <footer className="report-footer">
-        <p>{LEGAL_CONTENT_FOOTER}</p>
-      </footer>
+        <footer className="report-footer">
+          <p>{LEGAL_CONTENT_FOOTER}</p>
+        </footer>
+      </div>
     </main>
   );
 }

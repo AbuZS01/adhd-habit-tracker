@@ -64,7 +64,7 @@ to work.
 
 **Unit tests** (`npm test`) cover validation schemas and pure logic in `src/lib/` — no database or browser required.
 
-**End-to-end tests** (`npm run test:e2e`) drive a real browser against a production build (`next build && next start`) and cover the core flows: signing in, adding a child, logging an entry (including the Photo/Video/File evidence buttons), the planner (adding a plan and auto-completing it via a matching log entry), the progress page, and sidebar navigation on desktop and mobile viewports.
+**End-to-end tests** (`npm run test:e2e`) drive a real browser against a production build (`next build && next start`) and cover the core flows: signing in, adding a child, logging an entry (including the Photo/Video/File evidence buttons), the planner (adding a plan, ticking it off, and auto-completing it via a matching log entry), the progress page, and the hamburger drawer + bottom tab bar navigation.
 
 Requirements:
 - `DATABASE_URL` pointing at a **disposable local/test Postgres database** — `e2e/global-setup.ts` truncates every app table before the run and refuses to run against a non-localhost host unless `E2E_DB_CONFIRM=yes` is set.

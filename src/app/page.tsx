@@ -5,12 +5,15 @@ import { requireSessionFamily } from '@/lib/family';
 import { getDb } from '@/db/client';
 import { children as childrenTable, families as familiesTable, logEntries } from '@/db/schema';
 import { getNationContent } from '@/lib/legal-content';
-import { computeRecency } from '@/lib/recency';
-import AddChildDrawer from '@/components/AddChildDrawer';
+import { computeRecency, type RecencyTier } from '@/lib/recency';
+import DashboardHeader from '@/components/DashboardHeader';
 import QuickNoteCard from '@/components/QuickNoteCard';
 
-const RING_RADIUS = 17;
-const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+function recencyTagClass(tier: RecencyTier): string {
+  if (tier === 'good') return 'tag tag-accent';
+  if (tier === 'warn') return 'tag tag-outline';
+  return 'tag tag-neutral';
+}
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -18,8 +21,8 @@ export default async function DashboardPage() {
   if (!session?.user) {
     return (
       <main className="container">
-        <h1>Home Education Log</h1>
-        <p style={{ color: 'var(--text-muted)' }}>
+        <h1 style={{ fontWeight: 400 }}>Home Education Log</h1>
+        <p style={{ color: 'var(--color-neutral-700)' }}>
           Track each child&apos;s subjects and keep a dated record of their learning — for your own peace of
           mind, and as evidence if your Local Authority asks about your child&apos;s education.
         </p>
@@ -38,23 +41,25 @@ export default async function DashboardPage() {
                 Email address
                 <input type="email" name="email" required placeholder="you@example.com" />
               </label>
-              <button className="primary-btn" type="submit">
+              <button className="btn btn-primary btn-block" type="submit">
                 Send me a sign-in link
               </button>
             </form>
           )}
           {process.env.AUTH_GITHUB_ID && process.env.AUTH_GITHUB_SECRET && (
-            <form
-              style={{ marginTop: '0.75rem' }}
-              action={async () => {
-                'use server';
-                await signIn('github');
-              }}
-            >
-              <button className="secondary-btn" type="submit">
-                Sign in with GitHub
-              </button>
-            </form>
+            <>
+              <hr />
+              <form
+                action={async () => {
+                  'use server';
+                  await signIn('github');
+                }}
+              >
+                <button className="btn btn-secondary btn-block" type="submit">
+                  Sign in with GitHub
+                </button>
+              </form>
+            </>
           )}
         </section>
       </main>
@@ -99,10 +104,9 @@ export default async function DashboardPage() {
 
   return (
     <main className="container">
-      <div className="page-header">
-        <div>
-          <h1 style={{ marginBottom: '0.25rem' }}>Children</h1>
-          {family?.nation ? (
+      <DashboardHeader
+        sub={
+          family?.nation ? (
             <p className="page-sub">
               {getNationContent(family.nation).legalStandard} Full details on each child&apos;s evidence report.
             </p>
@@ -111,13 +115,12 @@ export default async function DashboardPage() {
               <Link href="/family">Set your nation</Link> to see the right home-education legal information for
               where you live.
             </p>
-          )}
-        </div>
-        <AddChildDrawer />
-      </div>
+          )
+        }
+      />
 
       {childRows.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)' }}>
+        <p style={{ color: 'var(--color-neutral-700)' }}>
           Add your first child&apos;s profile to start logging subjects and evidence.
         </p>
       ) : (
@@ -130,34 +133,14 @@ export default async function DashboardPage() {
           const entryCount = stats?.entryCount ?? 0;
           const subjectCount = stats?.subjectCount ?? 0;
           const recency = computeRecency(stats?.lastEntryDate ?? null);
-          const dashOffset = RING_CIRCUMFERENCE * (1 - recency.ringPercent / 100);
 
           return (
             <Link key={child.id} href={`/children/${child.id}`} className="card card-b">
-              <div className="ring">
-                <svg viewBox="0 0 40 40" width="54" height="54">
-                  <circle className="ring-track" cx="20" cy="20" r={RING_RADIUS} fill="none" strokeWidth="4" />
-                  {recency.ringPercent > 0 && (
-                    <circle
-                      cx="20"
-                      cy="20"
-                      r={RING_RADIUS}
-                      fill="none"
-                      className={`ring-fill ring-${recency.tier}`}
-                      strokeWidth="4"
-                      strokeLinecap="round"
-                      strokeDasharray={RING_CIRCUMFERENCE}
-                      strokeDashoffset={dashOffset}
-                    />
-                  )}
-                </svg>
-                <span className={entryCount === 0 ? 'ring-number muted' : 'ring-number'}>{entryCount}</span>
-              </div>
               <div className="card-b-body">
                 <div className="card-b-row">
                   <div>
-                    <p className="card-name">{child.name}</p>
                     {child.yearGroup && <p className="card-year">{child.yearGroup}</p>}
+                    <p className="card-name">{child.name}</p>
                   </div>
                   <span className="chevron" aria-hidden="true">
                     ›
@@ -165,11 +148,9 @@ export default async function DashboardPage() {
                 </div>
                 <p className="b-sub">
                   {subjectCount === 0 ? 'No subjects logged yet' : `${subjectCount} subject${subjectCount === 1 ? '' : 's'} logged`}
+                  {entryCount > 0 && ` · ${entryCount} ${entryCount === 1 ? 'entry' : 'entries'}`}
                 </p>
-                <div className="b-recency">
-                  <span className={`dot ${recency.tier === 'none' ? 'stale' : recency.tier}`} />
-                  {recency.label}
-                </div>
+                <span className={recencyTagClass(recency.tier)}>{recency.label}</span>
               </div>
             </Link>
           );

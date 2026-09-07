@@ -15,5 +15,5 @@ test.describe('sign-in gate', () => {
 test('signed-in guardian sees the dashboard, not the sign-in form', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Children' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Add child' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add a child' })).toBeVisible();
 });
