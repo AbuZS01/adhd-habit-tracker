@@ -24,7 +24,7 @@ export default async function FamilyPage() {
 
   return (
     <main className="container">
-      <h1>Family</h1>
+      <h1 style={{ fontWeight: 400 }}>Family</h1>
       <FamilyManager
         familyName={family?.name ?? ''}
         nation={family?.nation ?? null}

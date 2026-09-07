@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { upload } from '@vercel/blob/client';
+import { Camera, Video, FileText, type LucideIcon } from 'lucide-react';
 
 export type EvidenceKind = 'photo' | 'video' | 'file';
 
@@ -22,10 +23,10 @@ export const ATTACHMENT_ALLOWED_TYPES = [...ATTACHMENT_PHOTO_TYPES, ...ATTACHMEN
 export const ATTACHMENT_MAX_BYTES = 15 * 1024 * 1024; // 15MB — photos and documents.
 export const ATTACHMENT_MAX_VIDEO_BYTES = 200 * 1024 * 1024; // 200MB — phone video clips are much larger.
 
-const KIND_CONFIG: Record<EvidenceKind, { types: string[]; maxBytes: number; icon: string; label: string; errorLabel: string }> = {
-  photo: { types: ATTACHMENT_PHOTO_TYPES, maxBytes: ATTACHMENT_MAX_BYTES, icon: '📷', label: 'Photo', errorLabel: 'JPEG/PNG/WebP/HEIC photos' },
-  video: { types: ATTACHMENT_VIDEO_TYPES, maxBytes: ATTACHMENT_MAX_VIDEO_BYTES, icon: '🎥', label: 'Video', errorLabel: 'MP4/MOV/WebM videos' },
-  file: { types: ATTACHMENT_FILE_TYPES, maxBytes: ATTACHMENT_MAX_BYTES, icon: '📄', label: 'File', errorLabel: 'PDF, Word, Excel, or text files' },
+const KIND_CONFIG: Record<EvidenceKind, { types: string[]; maxBytes: number; Icon: LucideIcon; label: string; errorLabel: string }> = {
+  photo: { types: ATTACHMENT_PHOTO_TYPES, maxBytes: ATTACHMENT_MAX_BYTES, Icon: Camera, label: 'Photo', errorLabel: 'JPEG/PNG/WebP/HEIC photos' },
+  video: { types: ATTACHMENT_VIDEO_TYPES, maxBytes: ATTACHMENT_MAX_VIDEO_BYTES, Icon: Video, label: 'Video', errorLabel: 'MP4/MOV/WebM videos' },
+  file: { types: ATTACHMENT_FILE_TYPES, maxBytes: ATTACHMENT_MAX_BYTES, Icon: FileText, label: 'File', errorLabel: 'PDF, Word, Excel, or text files' },
 };
 
 function sanitizeFilename(name: string): string {
@@ -126,7 +127,7 @@ export function EvidenceButtons({
           return (
             <label key={kind} className="evidence-btn">
               <span className="evidence-btn-icon" aria-hidden="true">
-                {config.icon}
+                <config.Icon size={22} strokeWidth={1.75} />
               </span>
               <span className="evidence-btn-label">{config.label}</span>
               <input

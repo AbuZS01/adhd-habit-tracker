@@ -54,13 +54,13 @@ export default async function ChildProgressPage({ params }: { params: Promise<{ 
     <main className="container">
       <div className="page-header">
         <div>
-          <h1 style={{ marginBottom: 0 }}>{child.name}&apos;s progress</h1>
+          <h1 style={{ marginBottom: 0, fontWeight: 400 }}>{child.name}&apos;s progress</h1>
           <p className="page-sub">Subject coverage over the last {COVERAGE_WINDOW_DAYS} days, from your own log entries.</p>
         </div>
       </div>
 
       {subjects.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)' }}>Add a subject on the child&apos;s profile to see progress here.</p>
+        <p style={{ color: 'var(--color-neutral-700)' }}>Add a subject on the child&apos;s profile to see progress here.</p>
       ) : (
         <>
           <section className="card progress-summary">

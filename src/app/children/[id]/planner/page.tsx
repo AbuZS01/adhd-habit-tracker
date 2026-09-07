@@ -110,7 +110,7 @@ export default async function PlannerPage({
     <main className="container">
       <div className="page-header">
         <div>
-          <h1 style={{ marginBottom: 0 }}>{child.name}&apos;s planner</h1>
+          <h1 style={{ marginBottom: 0, fontWeight: 400 }}>{child.name}&apos;s planner</h1>
           <p className="page-sub">Plan which subjects to cover each day. Tick items off directly, or log an entry — either marks a plan as done.</p>
         </div>
       </div>
@@ -126,7 +126,7 @@ export default async function PlannerPage({
       </div>
 
       {subjects.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)' }}>Add a subject on the child&apos;s profile to start planning.</p>
+        <p style={{ color: 'var(--color-neutral-700)' }}>Add a subject on the child&apos;s profile to start planning.</p>
       ) : (
         <>
           <PlannerMonthGrid childId={childId} monthIso={monthIso} days={gridDaysWithChips} />

@@ -70,8 +70,11 @@ export default async function ChildPage({ params }: { params: Promise<{ id: stri
     <main className="container">
       <div className="page-header">
         <div>
-          <h1 style={{ marginBottom: 0 }}>{child.name}</h1>
-          {child.yearGroup && <p style={{ margin: 0, color: 'var(--text-muted)' }}>{child.yearGroup}</p>}
+          {child.yearGroup && <p className="card-year" style={{ margin: 0 }}>{child.yearGroup}</p>}
+          <h1 style={{ marginBottom: '0.15rem', fontWeight: 400 }}>{child.name}</h1>
+          <p className="page-sub">
+            {subjects.length} subject{subjects.length === 1 ? '' : 's'}
+          </p>
           <EditChildForm
             child={{
               id: child.id,
@@ -107,7 +110,7 @@ export default async function ChildPage({ params }: { params: Promise<{ id: stri
               </div>
             </div>
             {subjectEntries.length === 0 ? (
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No entries logged yet.</p>
+              <p style={{ color: 'var(--color-neutral-700)', fontSize: '0.9rem' }}>No entries logged yet.</p>
             ) : (
               <ul className="entry-list">
                 {subjectEntries.map((entry) => (

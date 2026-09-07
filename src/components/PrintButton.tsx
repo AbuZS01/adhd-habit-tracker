@@ -2,8 +2,8 @@
 
 export default function PrintButton() {
   return (
-    <button className="secondary-btn no-print" onClick={() => window.print()}>
-      Print / save as PDF
+    <button className="btn btn-ghost no-print" onClick={() => window.print()}>
+      Print to PDF
     </button>
   );
 }
